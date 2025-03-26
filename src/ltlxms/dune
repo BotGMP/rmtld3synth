@@ -1,4 +1,9 @@
- (library
+(library
  (name ltlxms)
  (libraries z3)
- (modules ltlxms formulas))
+ (modules ltlxms ))
+
+(library
+ (name formulas)
+ (libraries z3)
+ (modules formulas))
