@@ -1,0 +1,9 @@
+(test
+ (name test_ltlxms)
+ (libraries yojson ltlxms)
+ (modules test_ltlxms))
+
+(test
+ (name test_formulas)
+ (libraries z3 ltlxms)
+ (modules test_formulas))
