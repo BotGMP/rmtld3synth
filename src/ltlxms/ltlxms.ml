@@ -6,6 +6,7 @@ type term =
   | NextT of term * int
   | Expand of term * float
   | UntilT of term * term
+  [@@deriving yojson]
 
 type formula =
   | SubSetEq of term * term
@@ -24,4 +25,5 @@ type formula =
   | Include of term * term
   | Disconnect of term * term
   | AlwaysPast of formula
-  | Once of formula 
+  | Once of formula
+  [@@deriving yojson]

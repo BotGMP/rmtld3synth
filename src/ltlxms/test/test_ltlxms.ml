@@ -2,7 +2,7 @@ open Yojson.Basic.Util
 open Ltlxms
 
 (* Example function to parse JSON input and create a formula *)
-let rec parse_formula json = (* Add 'rec' here to make the function recursive *)
+let rec parse_formula json = 
   match json |> member "type" |> to_string with
   | "Proposition" -> Proposition (json |> member "value" |> to_string)
   | "Intersection" ->
@@ -18,7 +18,7 @@ let rec parse_formula json = (* Add 'rec' here to make the function recursive *)
       Negation term
   | _ -> failwith "Unsupported formula type"
 
-(* Example test case *)
+(* Test case *)
 let test_parse_formula () =
   let json_input = Yojson.Basic.from_string {|
     {

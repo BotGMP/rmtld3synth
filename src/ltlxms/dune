@@ -1,9 +1,11 @@
 (library
  (name ltlxms)
- (libraries z3)
- (modules ltlxms ))
+ (libraries z3 yojson)
+ (preprocess (pps ppx_deriving_yojson))
+ (modules ltlxms))
 
 (library
  (name formulas)
  (libraries z3)
+ (preprocess (pps ppx_deriving_yojson))
  (modules formulas))

@@ -5,5 +5,5 @@
 
 (test
  (name test_formulas)
- (libraries z3 formulas yojson)
+ (libraries z3 formulas yojson ltlxms)
  (modules test_formulas))

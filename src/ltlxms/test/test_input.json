@@ -1,4 +1,1 @@
-{
-    "expr1": { "type": "true" },
-    "expr2": { "type": "false" }
-}
+[ "Intersection", [ "Proposition", "p" ], [ "Proposition", "q" ] ]
