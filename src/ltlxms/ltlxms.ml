@@ -13,7 +13,7 @@ type formula =
   | And of formula * formula
   | Or of formula * formula
   | Not of formula
-  | Next of formula * int
+  | Next of formula
   | Until of formula * formula
   | Always of formula
   | Eventually of formula

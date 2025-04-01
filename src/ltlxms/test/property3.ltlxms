@@ -1,0 +1,3 @@
+(property
+    (always (overlap (prop "a") (prop "b") ))
+)

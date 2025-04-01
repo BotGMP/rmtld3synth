@@ -1,0 +1,4 @@
+[ "And", 
+  [ "Next", [ "SubSetEq", [ "Proposition", "a" ], [ "Proposition", "b" ] ], 1 ],
+  [ "Next", [ "Next", [ "SubSetEq", [ "Proposition", "a" ], [ "Proposition", "b" ] ], 1 ], 1 ]
+]

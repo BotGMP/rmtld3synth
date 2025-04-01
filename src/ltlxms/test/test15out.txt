@@ -1,0 +1,2 @@
+(always (or (overlap (expand a 1.0) b) 
+            (eventually (forall ((xs Real) (ys Real)) (=> a b)))))

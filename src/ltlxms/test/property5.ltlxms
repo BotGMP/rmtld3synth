@@ -1,0 +1,3 @@
+(property
+  (overlap   (expand ( expand ( expand (prop "a") 1.) 1.5)1.5 ) (prop "b") )
+)

@@ -1,0 +1,2 @@
+(and (next (forall ((xs Real) (ys Real)) (=> a b))) 
+     (next (next (forall ((xs Real) (ys Real)) (=> a b)))))
