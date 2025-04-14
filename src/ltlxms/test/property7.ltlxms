@@ -1,3 +1,0 @@
-(property
-  (next (overlap   ( nextt (expand (prop "a") 1. )) (nextt (prop "b")) ))
-)

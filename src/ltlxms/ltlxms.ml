@@ -3,7 +3,7 @@ type term =
   | Intersection of term * term
   | Union of term * term
   | Negation of term
-  | NextT of term * int
+  | NextT of term
   | Expand of term * float
   | UntilT of term * term
   [@@deriving yojson]
@@ -17,7 +17,7 @@ type formula =
   | Until of formula * formula
   | Always of formula
   | Eventually of formula
-  | Previous of formula * int
+  | Previous of formula
   | Since of formula * formula
   | Implies of formula * formula
   | Overlap of term * term

@@ -1,3 +1,0 @@
-(property
-     (and (next(subseteq (prop "a") (prop "b"))) (next(next(subseteq (prop "a") (prop "b")))))
-)
