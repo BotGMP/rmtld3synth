@@ -6,6 +6,6 @@
 
 (library
  (name formulas)
- (libraries z3)
+ (libraries z3 yojson ltlxms)
  (preprocess (pps ppx_deriving_yojson))
  (modules formulas))
