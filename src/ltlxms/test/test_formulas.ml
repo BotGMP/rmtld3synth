@@ -2,7 +2,7 @@ open Z3
 open Formulas 
 (* Initialize Z3 context *)
 let ctx = mk_context []
-let verbose = false
+let verbose = true
 
 (* Debugging *)
 let debug msg =
