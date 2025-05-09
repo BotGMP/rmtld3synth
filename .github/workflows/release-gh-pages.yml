@@ -1,0 +1,38 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  set_gh_pages:
+    name: Release gh-pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build-artifact-${{ github.sha }}
+
+      - shell: bash
+        run: |
+          ls
+          mkdir -p ./public
+          cp rmtld3synth.js ./public
+          cp doc/page/*.* ./public
+          ls ./public -l
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/master'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public

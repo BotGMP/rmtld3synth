@@ -1,13 +1,14 @@
-name: GitHub Pages
+name: Web Build
 
 on:
-  push:
-    branches:
-      - master
+  - push
+  - pull_request
+
+permissions: read-all
 
 jobs:
   set_gh_pages:
-    name: Build and Set gh-pages
+    name: Build web
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -28,14 +29,10 @@ jobs:
           eval $(opam env) && \
           ./configure --js_of_ocaml --without-z3-solver && make js && \
           mkdir -p /workspace/source/public && \
-          cp _build/default/src/rmtld3synth.js /workspace/source/public &&
-          cp doc/page/index.html /workspace/source/public &&
-          cp doc/page/style.css /workspace/source/public &&
-          ls /workspace/source/public -l'
+          cp _build/default/src/rmtld3synth.js /workspace/source/public'
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/master'
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          name: web-build-artifact-${{ github.sha }}
+          path: ./public/rmtld3synth.js

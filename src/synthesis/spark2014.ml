@@ -50,38 +50,65 @@ let gen_adjust_base t helper =
  * Compute terms
  *)
 let synth_tm_constant value helper =
-  ("make_duration(" ^ string_of_int (int_of_float value) ^ ",false)", "")
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Cons_" ^ id
+  , "function Cons_" ^ id ^ " is new X_rmtld3.Cons (Value => "
+    ^ Ada_pp.pp_expression (Ada_pp.mk_float value)
+    ^ ");" )
 
 let synth_tm_variable name helper =
   failwith "Free variables are not possible."
 
 let synth_tm_duration (di, a) (tf, b) helper =
+  failwith "unimplemented!" ;
   let id = get_duration_counter helper in
   (* [TODO: check di; unknown is not implemented!; nested duration may be a
      problem!] *)
   ("", "")
 
 let synth_tm_plus (cmptr1, a) (cmptr2, b) helper =
-  ("sum_dur(" ^ cmptr1 ^ ", " ^ cmptr2 ^ ")", a ^ b)
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Sum_" ^ id
+  , a ^ "\n" ^ b ^ "\nfunction Sum_" ^ id ^ " is new X_rmtld3.Sum ( tm1 =>"
+    ^ cmptr1 ^ ", tm2 => " ^ cmptr2 ^ ");" )
 
 let synth_tm_times (cmptr1, a) (cmptr2, b) helper =
-  ("mult_dur(" ^ cmptr1 ^ ", " ^ cmptr2 ^ ")", a ^ b)
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Times_" ^ id
+  , a ^ "\n" ^ b ^ "\nfunction Times_" ^ id
+    ^ " is new X_rmtld3.Times ( tm1 =>" ^ cmptr1 ^ ", tm2 => " ^ cmptr2
+    ^ ");" )
 
 (*
  * compute formulas
  *)
-let synth_fm_true helper = ("T_TRUE", "")
+let synth_fm_true helper = ("X_rmtld3.mk_true", "")
 
 let synth_fm_p p helper =
-   ( "prop<T>(trace, PROP_" ^ find_proposition_rev_hashtbl p helper ^ ", t)"
-  , "" )
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Prop_" ^ id
+  , "function Prop_" ^ id ^ " is new X_rmtld3.Prop (Proposition => P'Pos (P_"
+    ^ find_proposition_rev_hashtbl p helper
+    ^ "));" )
 
-let synth_fm_not (cmpfm, a) helper = failwith "unimplemented!" ("", "")
+let synth_fm_not (cmpfm, a) helper =
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Not3_" ^ id
+  , a ^ "\nfunction Not3_" ^ id ^ " is new X_rmtld3.Not3 (fm => " ^ cmpfm
+    ^ ");" )
 
 let synth_fm_or (cmpfm1, a) (cmpfm2, b) helper =
-  failwith "unimplemented!" ("", "")
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Or3_" ^ id
+  , a ^ "\n" ^ b ^ "\nfunction Or3_" ^ id ^ " is new X_rmtld3.Or3 (fm1 => "
+    ^ cmpfm1 ^ ", fm2 => " ^ cmpfm2 ^ ");" )
 
-let synth_fm_less (cmptr1, a) (cmptr2, b) helper = ("", "")
+let synth_fm_less (cmptr1, a) (cmptr2, b) helper =
+  let id = helper |> get_unique_id |> string_of_int in
+  ( "Less3_" ^ id
+  , a ^ "\n" ^ b ^ "\nfunction Less3_" ^ id
+    ^ " is new X_rmtld3.Less3 (tm1 => " ^ cmptr1 ^ ", tm2 => " ^ cmptr2
+    ^ ");" )
 
 let convert_to_always_equal (sf2, b) gamma helper =
   print_endline
@@ -151,39 +178,141 @@ let synth_fm_seq gamma (sf1, a) (sf2, b) helper =
 
 (* monitor dependent spark2014 functions begin here *)
 let synth_spark2014 compute helper =
-  print_endline "\x1b[33mCurrent Configuration:\x1b[0m" ;
-  print_settings helper ;
+  let save filename =
+    if is_setting "out_dir" helper then ( fun a ->
+      let stream =
+        open_out (get_setting_string "out_dir" helper ^ "/" ^ filename)
+      in
+      Printf.fprintf stream "%s\n" a ;
+      close_out stream )
+    else print_endline
+  in
+  verb_m 1 (fun _ ->
+      print_endline "\x1b[33mCurrent Configuration:\x1b[0m" ;
+      print_settings helper ) ;
   let expressions = get_all_setting_formula "input_exp" helper in
   if expressions = [] then (
     print_endline "no formula is available." ;
     exit 1 ) ;
-  print_endline "\x1b[33mExpression(s) selected to encode:\x1b[0m" ;
-  List.iter
-    (fun exp ->
-      print_plaintext_formula exp ;
-      print_endline "" )
-    expressions ;
+  verb_m 1 (fun _ ->
+      print_endline "\x1b[33mExpression(s) selected to encode:\x1b[0m" ;
+      List.iter
+        (fun exp ->
+          print_plaintext_formula exp ;
+          print_endline "" )
+        expressions ) ;
   let cpp_monitor_lst =
     List.fold_right
       (fun exp lst ->
         let x, y = compute exp helper in
         ((x, y), string_of_int (List.length lst)) :: lst )
-      expressions []
+      (List.rev expressions) []
   in
   let pair_to_string ((x, y), z) = "((" ^ x ^ "," ^ y ^ "), " ^ z ^ ")" in
   let id =
-    String.sub
-      ( Digest.string
-          (String.concat "" (List.map pair_to_string cpp_monitor_lst))
-      |> Digest.to_hex )
-      0 4
+    List.map pair_to_string cpp_monitor_lst
+    |> String.concat "" |> Digest.string |> Digest.to_hex
+    |> fun s -> String.sub s 0 4
   in
   let name =
     insert_string
       (get_setting_string "rtm_monitor_name_prefix" helper)
       id '%'
   in
+  let convert_proposition_to_enumeration_type =
+    Hashtbl.fold
+      (fun a b acc ->
+        match (a, b) with
+        | N a, S b -> ("P_" ^ b) :: acc
+        | _ -> failwith "prop_lst!" )
+      (get_proposition_rev_hashtbl helper)
+      []
+    |> Ada_pp.mk_list_append "Other"
+    |> Ada_pp.mk_type_declaration "P"
+  in
   let monitor_name = insert_string name "compute" '#' in
-  ()
+  (* construct all rtm_compute units *)
+  List.iter
+    (fun ((function_call, body), n) ->
+      Ada_pp.mk_package_specification
+        (monitor_name ^ "_" ^ n)
+        [ convert_proposition_to_enumeration_type
+        ; UnsafeDeclaration body (* unsafe *)
+        ; Ada_pp.mk_comment function_call ]
+      |> Ada_pp.mk_generic_package
+           [Ada_pp.mk_formal_package_declaration "X_rmtld3" "Rmtld3" "(<>)"]
+      |> Ada_pp.mk_compilation_unit_declaration_generic_package
+           [ "This file was automatically generated from rmtld3synth tool.\n\
+              -- Settings:\n"
+             ^ String.concat "\n"
+                 (List.map
+                    (fun x -> if x = "" then "" else "--   " ^ x)
+                    (String.split_on_char '\n'
+                       (get_string_of_settings
+                          ~exclude:["version"; "gen_tests"] helper ) ) )
+             ^ "-- Expression:\n--   "
+             ^ ( n |> int_of_string |> List.nth expressions
+               |> string_of_rmtld_fm )
+             |> Ada_pp.mk_context_comment
+           ; Ada_pp.With "Rmtld3" ]
+      |> Ada_pp.mk_compilation_unit_declaration |> Ada_pp.pp_compilation_unit
+      |> save (monitor_name ^ "_" ^ n ^ ".ads") )
+    cpp_monitor_lst ;
+  (* generate test package *)
+  if is_setting "environment" helper then (
+    let json =
+      get_setting_string "environment" helper |> Yojson.Safe.from_string
+    in
+    let json_trc = json |> Yojson.Safe.Util.member "trc" in
+    let trc =
+      if json_trc <> `Null then trace_of_yojson json_trc
+      else failwith "No 'trc' available!"
+    in
+    Ada_pp.mk_subprogram_specification "Test"
+      [Ada_pp.mk_parameter "buf" (UnsafeType "access Nat_Buffer.Buffer_Type")]
+      None
+    |> Ada_pp.mk_generic_subprogram
+         [ Ada_pp.mk_formal_package_declaration "Nat_Buffer" "Buffer" "(<>)"
+         ; Ada_pp.mk_use_declaration "Nat_Buffer" ]
+    |> Ada_pp.mk_list
+    |> Ada_pp.mk_list_append convert_proposition_to_enumeration_type
+    |> Ada_pp.mk_package_specification "Unit"
+    |> Ada_pp.mk_package_declaration
+    |> Ada_pp.mk_compilation_unit_declaration_package [With "Buffer"]
+    |> Ada_pp.mk_compilation_unit_declaration |> Ada_pp.pp_compilation_unit
+    |> save "unit.ads" ;
+    let rec convert_lst_to_reader lst =
+      match lst with
+      | [] -> []
+      | (p, t) :: tl ->
+          Ada_pp.mk_if
+            (Equal
+               ( Ada_pp.mk_function_call "Nat_Buffer.Push"
+                   [ Ada_pp.mk_expression_parameter (Name "buf.all")
+                   ; Ada_pp.mk_expression_parameter
+                       (Ada_pp.mk_function_call "Nat_Buffer.E.Create"
+                          [ Ada_pp.mk_expression_parameter ~selector:"Data"
+                              (Ada_pp.mk_enumeration_item
+                                 ( "P'Pos ( "
+                                 ^ ( if exists_proposition_hashtbl p helper
+                                     then "P_" ^ p
+                                     else "Other" )
+                                 ^ " )" ) )
+                          ; Ada_pp.mk_expression_parameter ~selector:"Time"
+                              (Ada_pp.mk_float t) ] ) ]
+               , Ada_pp.mk_name "Nat_Buffer.No_Error" ) )
+            [Ada_pp.mk_print "No Error!"]
+            [Ada_pp.mk_print "Error!"]
+          :: convert_lst_to_reader tl
+    in
+    convert_lst_to_reader trc
+    |> Ada_pp.mk_subprogram "Test"
+         [ Ada_pp.mk_parameter "buf"
+             (UnsafeType "access Nat_Buffer.Buffer_Type") ]
+         None []
+    |> Ada_pp.mk_package_body "Unit"
+    |> Ada_pp.mk_compilation_unit_package_body [With "Ada.Text_IO"]
+    |> Ada_pp.mk_compilation_unit_body |> Ada_pp.pp_compilation_unit
+    |> save "unit.adb" )
 
 (* monitor dependent functions ends here *)

@@ -41,7 +41,9 @@ jobs:
           mkdir -p files #
           curl -O https://raw.githubusercontent.com/fdopen/opam-repository-mingw/refs/heads/opam2/packages/z3/z3.4.11.2/files/z3-z3-4.11.2.patch #
           mv z3-z3-4.11.2.patch files/ #
-          rm ../../../../*.cache #
+          cd ../../../ #
+          rm ../*.cache #
+          opam admin update-extrafiles #
         shell: bash
 
       - name: Set-up Z3
@@ -49,3 +51,12 @@ jobs:
 
       - name: Build rmtld3synth
         run: opam install . --with-test
+
+      - name: 'Tar files'
+        run: tar -cvf files.tar ./
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-artifact-${{ github.sha }}
+          path: ./files.tar
