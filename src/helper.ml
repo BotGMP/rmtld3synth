@@ -3,8 +3,6 @@ open Sexplib.Conv
 open Rmtld3
 include Js.Helper_
 
-let _ = Random.self_init
-
 (* global_int settings *)
 type global_int = string * int [@@deriving sexp]
 
@@ -126,9 +124,9 @@ let print_settings tbl =
       print_endline "" )
     tbl
 
-let get_string_of_settings tbl =
+let get_string_of_settings ?(exclude=[]) tbl =
   Hashtbl.fold
-    (fun a b lst -> lst ^ a ^ " -> " ^ get_string_of_setting b ^ "\n")
+    (fun a b lst -> if List.exists (fun x -> a = x) exclude then lst else lst ^ a ^ " -> " ^ get_string_of_setting b ^ "\n")
     tbl ""
 
 let get_proposition_hashtbl helper = get_setting_hash "prop_map" helper
@@ -136,10 +134,15 @@ let get_proposition_hashtbl helper = get_setting_hash "prop_map" helper
 let get_proposition_rev_hashtbl helper =
   get_setting_hash "prop_map_reverse" helper
 
+let exists_proposition_hashtbl s helper =
+  match Hashtbl.find_opt (get_proposition_hashtbl helper) (S s) with
+  | Some (N _) -> true
+  | _ -> false
+
 let find_proposition_hashtbl s helper =
-  match Hashtbl.find (get_proposition_hashtbl helper) (S s) with
-  | N v -> v
-  | _ -> failwith "find_proposition_hashtbl: values mismatch!"
+  match Hashtbl.find_opt (get_proposition_hashtbl helper) (S s) with
+  | Some (N v) -> Some v
+  | _ -> None
 
 let find_proposition_rev_hashtbl v helper =
   try
@@ -181,13 +184,19 @@ let get_proposition_counter helper = _get_counter "fm_num_prop" helper
 let get_until_counter helper =
   let x = _get_counter "fm_num_until" helper in
   (* avoid same template id *)
-  let y = Random.int 1000000 in
+  let y = _get_counter "unique_id_counter" helper in
   pair (x, y)
 
 let get_duration_counter helper =
   let x = _get_counter "fm_num_duration" helper in
   (* avoid same template id *)
-  let y = Random.int 1000000 in
+  let y = _get_counter "unique_id_counter" helper in
+  pair (x, y)
+
+let get_unique_id helper =
+  let x = _get_counter "fm_num_unique_id" helper in
+  (* avoid same template id *)
+  let y = _get_counter "unique_id_counter" helper in
   pair (x, y)
 
 let get_inc_counter_test_cases = _get_counter "unittests_num_test_cases"
