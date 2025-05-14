@@ -21,7 +21,7 @@ let string_of_trace tr =
   let events_str = String.concat "\n" (List.map string_of_event tr.trace) in
   Printf.sprintf "Trace:\n%s" events_str
 
-(* Main function to read the JSON file, parse it, and print the parsed trace *)
+(* Main function to read the JSON file, parse it, and print the trace *)
 let () =
   let json_file = "/home/gmp/Projeto/rmtld3synth/src/trace/test/Scenario1_Test1.json" in
   let json = Yojson.Basic.from_file json_file in
