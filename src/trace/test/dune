@@ -4,6 +4,11 @@
  (modules test_trace))
 
 (test
- (name test_circles)
+ (name expressions_and_AABB)
  (libraries trace yojson z3)
- (modules test_circles))
+ (modules expressions_and_AABB))
+ 
+(test
+ (name expressions_and_OBB)
+ (libraries trace yojson z3)
+ (modules expressions_and_OBB))
