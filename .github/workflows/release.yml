@@ -1,10 +1,10 @@
+name: Release
+
 on:
   push:
     # Sequence of patterns matched against refs/tags
     tags:
     - 'v*' # Push events to matching v*, i.e. v0.6
-
-name: Upload Release Asset
 
 jobs:
   build:
@@ -13,17 +13,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
 
       - name: Install and Authenticate GitHub CLI
         run: |
@@ -43,21 +32,21 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ env.RUN_ID_WEB }}
+          path: ./web-build-artifact-${{ github.sha }}
 
       - name: run anmaped/rmtld3synth image
         run: |
           docker run --rm \
-          --entrypoint /bin/bash \
+          --entrypoint /bin/sh \
           -v ${PWD}:/workspace/source:z  \
-          docker.io/anmaped/rmtld3synth:v0.6-x-slim \
+          docker.io/anmaped/rmtld3synth:${{ github.ref_name }}-slim \
           -c 'apk add xz && \
           xz /usr/bin/rmtld3synth && \
           cp /usr/bin/rmtld3synth.xz /workspace/source'
 
       - name: Get latest windows-build run ID
-        id: get_run_id
         run: |
-          RUN_ID=$(gh run list --workflow=web-build.yml --limit=1 --json databaseId -q '.[0].databaseId')
+          RUN_ID=$(gh run list --workflow=windows-build.yml --limit=1 --json databaseId -q '.[0].databaseId')
           echo "Latest run ID: $RUN_ID"
           echo "RUN_ID_WINDOWS=$RUN_ID" >> $GITHUB_ENV  # Save to environment variable
 
@@ -67,40 +56,52 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ env.RUN_ID_WINDOWS }}
+          path: ./windows-build-artifact-${{ github.sha }}
 
       - shell: bash
         run: |
+          sudo apt install zip -y
+          zip -j -r ./windows-build-artifact-${{ github.sha }}.zip ./windows-build-artifact-${{ github.sha }}
+          zip -j -r ./web-build-artifact-${{ github.sha }}.zip ./web-build-artifact-${{ github.sha }}
           ls
 
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
       - name: Upload Release Asset web-build-artifact-${{ github.sha }}
-        id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./web-build-artifact-${{ github.sha }}.zip
-          asset_name: rmtld3synth-${{ github.ref }}-web.zip
+          asset_name: rmtld3synth-${{ github.ref_name }}-web.zip
           asset_content_type: application/zip
 
       - name: Upload Release Asset linux-build-artifact-${{ github.sha }}
-        id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./rmtld3synth.xz
-          asset_name: rmtld3synth-${{ github.ref }}-linux.xz
+          asset_name: rmtld3synth-${{ github.ref_name }}-linux.xz
           asset_content_type: application/xz
 
       - name: Upload Release Asset windows-build-artifact-${{ github.sha }}
-        id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./windows-build-artifact-${{ github.sha }}.zip
-          asset_name: rmtld3synth-${{ github.ref }}-windows.zip
+          asset_name: rmtld3synth-${{ github.ref_name }}-windows.zip
           asset_content_type: application/zip
