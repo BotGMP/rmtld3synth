@@ -56,7 +56,7 @@ let test_operation input_file output_file =
 
   (* Compare actual output with expected output *)
   if actual_output = expected_output then
-    Printf.printf "Test passed for %s!\n" input_file
+    Printf.printf "Test passed for %s!\n\n\n" input_file
   else (
     Printf.printf "Test failed for %s!\n" input_file;
     Printf.printf "Expected: %s\n" expected_output;
@@ -71,7 +71,7 @@ let () =
       let input_file = file in
       let output_file = Filename.chop_suffix file ".json" ^ "out.txt" in
       if Sys.file_exists output_file then (
-        debug (Printf.sprintf "Running test with input file: %s and output file: %s" input_file output_file);
+        debug (Printf.sprintf "Running test with input file: %s and output file: %s\n" input_file output_file);
         test_operation input_file output_file
       ) else
         Printf.printf "Output file %s not found for input file %s\n" output_file input_file

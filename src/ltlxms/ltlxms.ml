@@ -5,7 +5,7 @@ type term =
   | Negation of term
   | NextT of term
   | Expand of term * float
-  | UntilT of term * term
+  | UntilT of term * term * int
   [@@deriving yojson]
 
 type formula =
@@ -14,7 +14,7 @@ type formula =
   | Or of formula * formula
   | Not of formula
   | Next of formula
-  | Until of formula * formula
+  | Until of formula * formula * int
   | Always of formula
   | Eventually of formula
   | Previous of formula

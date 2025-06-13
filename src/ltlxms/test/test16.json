@@ -1,4 +1,1 @@
-[ "Overlap", 
-  [ "Proposition", "a" ],
-  [ "Proposition", "b" ]
-]
+["UntilT", ["Proposition", "p" ], ["Proposition", "q" ], 1]

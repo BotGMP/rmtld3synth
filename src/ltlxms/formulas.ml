@@ -54,24 +54,49 @@ module Temporal = struct
     let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
     Z3.Expr.mk_app ctx func_decl [formula]
 
-  (* Auxiliary function for the below until implementation *)
-  let until_aux (ctx : Z3.context) (expr1_list : Z3.Expr.expr list) (expr2_list : Z3.Expr.expr list) (n : int) (m : int) : Z3.Expr.expr =
-    if n >= List.length expr1_list || m >= List.length expr2_list then
-      Z3.Boolean.mk_false ctx
-    else
-      let expr1_n = List.nth expr1_list n in
-      let expr2_m = List.nth expr2_list m in
-      Logic.single_and ctx expr1_n expr2_m
+  (* Helper function to apply 'next' n times *)
+  let rec apply_next_n_times (ctx : Z3.context) (expr : Z3.Expr.expr) (n : int) : Z3.Expr.expr =
+    if n < 0 then invalid_arg "n cannot be negative for apply_next_n_times: n must be >= 0"
+    else if n = 0 then expr
+    else apply_next_n_times ctx (next ctx expr) (n - 1)
 
-  let rec until (ctx : Z3.context) (expr1_list : Z3.Expr.expr list) (expr2_list : Z3.Expr.expr list) (n : int) : Z3.Expr.expr =
-    if List.length expr1_list <= 1 || List.length expr2_list <= 1 || List.length expr1_list <> List.length expr2_list then
-      invalid_arg "The lists must have the same size and length > 1"
-    else if n + 2 = List.length expr1_list then
-      Z3.Boolean.mk_false ctx
+  (* Until operator: e1 U e2 unfolded "unravel" times *)
+  let until (ctx : Z3.context) (e1 : Z3.Expr.expr) (e2 : Z3.Expr.expr) (unravel : int) : Z3.Expr.expr =
+    if unravel < 0 then
+      invalid_arg "Unravel depth for 'until' must be non-negative."
     else
-      let aux = until_aux ctx expr1_list expr2_list (n + 2) (n + 3) in
-      let rest = until ctx expr1_list expr2_list (n + 1) in
-      Logic.single_or ctx aux rest
+      (* Generate each "disjunct" of the final or*)
+      let rec generate_disjuncts_iter k acc_disjuncts =
+        if k > unravel then 
+          List.rev acc_disjuncts
+        else
+          (* Construct the nth disjunct*)
+          let term_e2_part = apply_next_n_times ctx e2 k in
+
+          (* Generate the "and" parts of the disjunct*)
+          let rec build_e1_conjunction_list_iter current_j_for_e1 acc_e1_terms_list =
+            if current_j_for_e1 >= k then
+              List.rev acc_e1_terms_list
+            else
+              let next_j_e1 = apply_next_n_times ctx e1 current_j_for_e1 in
+              build_e1_conjunction_list_iter (current_j_for_e1 + 1) (next_j_e1 :: acc_e1_terms_list)
+          in
+
+          let e1_terms_for_conjunction = build_e1_conjunction_list_iter 0 [] in
+          
+          (*Construct the actual disjunct*)
+          let current_disjunct_term =
+            if k = 0 then
+              term_e2_part
+            else
+              let all_components_for_and = e1_terms_for_conjunction @ [term_e2_part] in
+              Z3.Boolean.mk_and ctx all_components_for_and
+          in
+          generate_disjuncts_iter (k + 1) (current_disjunct_term :: acc_disjuncts)
+      in
+      let all_disjuncts_list = generate_disjuncts_iter 0 [] in
+      (* Since unravel >= 0, all_disjuncts_list will have at least one element. *)
+      Z3.Boolean.mk_or ctx all_disjuncts_list
 
   (* Previous operator*)
   let previous (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
@@ -111,7 +136,11 @@ let rec term_to_z3 ctx term =
       let expand_func = Z3.FuncDecl.mk_func_decl ctx expand_symbol [Z3.Boolean.mk_sort ctx; Z3.Arithmetic.Real.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
       Z3.Expr.mk_app ctx expand_func [term_to_z3 ctx t; Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float value)]
   | Ltlxms.NextT t -> Temporal.nextt ctx (term_to_z3 ctx t)
-  | _ -> failwith "Unsupported term type for conversion to Z3"
+  | Ltlxms.UntilT (t1, t2, unravel_depth) -> 
+      let e1 = term_to_z3 ctx t1 in
+      let e2 = term_to_z3 ctx t2 in
+      Temporal.until ctx e1 e2 unravel_depth
+  | Ltlxms.Negation t -> Logic.single_not ctx (term_to_z3 ctx t)
 
 (* Convert a formula into a Z3 expression *)
 let rec formula_to_z3 ctx formula =
@@ -127,5 +156,9 @@ let rec formula_to_z3 ctx formula =
   | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx t1) (term_to_z3 ctx t2)
   | Ltlxms.Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx f1) (formula_to_z3 ctx f2)
   | Ltlxms.Previous f -> Temporal.previous ctx (formula_to_z3 ctx f)
+  | Ltlxms.Until (f1, f2, unravel_depth) -> 
+      let e1 = formula_to_z3 ctx f1 in
+      let e2 = formula_to_z3 ctx f2 in
+      Temporal.until ctx e1 e2 unravel_depth
   | _ -> failwith "Unsupported formula type for conversion to Z3"
 end
