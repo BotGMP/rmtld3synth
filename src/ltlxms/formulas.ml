@@ -1,3 +1,12 @@
+type temporal_operator_decls = {
+  next_decl : Z3.FuncDecl.func_decl;
+  nextt_decl : Z3.FuncDecl.func_decl;
+  previous_decl : Z3.FuncDecl.func_decl;
+  once_decl : Z3.FuncDecl.func_decl;
+  always_decl : Z3.FuncDecl.func_decl;
+  eventually_decl : Z3.FuncDecl.func_decl;
+}
+
 module Formulas = struct
 (* Module for basic logical operations *)
 module Logic = struct
@@ -27,64 +36,49 @@ end
 (* Module for temporal logic operations *)
 module Temporal = struct
   (* NextT operator *)
-  let nextt (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "nextt" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let nextt (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.nextt_decl [formula]
+
   (* Once operator *)
-  let once (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "once" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let once (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.once_decl [formula]
+
   (* Next operator *)
-  let next (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "next" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let next (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.next_decl [formula]
   
   (* Always operator *)
-  let always (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "always" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let always (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.always_decl [formula]
 
   (* Eventually operator *)
-  let eventually (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "eventually" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let eventually (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.eventually_decl [formula]
 
   (* Helper function to apply 'next' n times *)
-  let rec apply_next_n_times (ctx : Z3.context) (expr : Z3.Expr.expr) (n : int) : Z3.Expr.expr =
+  let rec apply_next_n_times (ctx : Z3.context) (decls: temporal_operator_decls) (expr : Z3.Expr.expr) (n : int) : Z3.Expr.expr =
     if n < 0 then invalid_arg "n cannot be negative for apply_next_n_times: n must be >= 0"
     else if n = 0 then expr
-    else apply_next_n_times ctx (next ctx expr) (n - 1)
+    else apply_next_n_times ctx decls (next ctx decls expr) (n - 1)
 
   (* Until operator: e1 U e2 unfolded "unravel" times *)
-  let until (ctx : Z3.context) (e1 : Z3.Expr.expr) (e2 : Z3.Expr.expr) (unravel : int) : Z3.Expr.expr =
+  let until (ctx : Z3.context) (decls: temporal_operator_decls) (e1 : Z3.Expr.expr) (e2 : Z3.Expr.expr) (unravel : int) : Z3.Expr.expr =
     if unravel < 0 then
       invalid_arg "Unravel depth for 'until' must be non-negative."
     else
-      (* Generate each "disjunct" of the final or*)
       let rec generate_disjuncts_iter k acc_disjuncts =
         if k > unravel then 
           List.rev acc_disjuncts
         else
-          (* Construct the nth disjunct*)
-          let term_e2_part = apply_next_n_times ctx e2 k in
-
-          (* Generate the "and" parts of the disjunct*)
+          let term_e2_part = apply_next_n_times ctx decls e2 k in
           let rec build_e1_conjunction_list_iter current_j_for_e1 acc_e1_terms_list =
             if current_j_for_e1 >= k then
               List.rev acc_e1_terms_list
             else
-              let next_j_e1 = apply_next_n_times ctx e1 current_j_for_e1 in
+              let next_j_e1 = apply_next_n_times ctx decls e1 current_j_for_e1 in
               build_e1_conjunction_list_iter (current_j_for_e1 + 1) (next_j_e1 :: acc_e1_terms_list)
           in
-
           let e1_terms_for_conjunction = build_e1_conjunction_list_iter 0 [] in
-          
-          (*Construct the actual disjunct*)
           let current_disjunct_term =
             if k = 0 then
               term_e2_part
@@ -95,70 +89,67 @@ module Temporal = struct
           generate_disjuncts_iter (k + 1) (current_disjunct_term :: acc_disjuncts)
       in
       let all_disjuncts_list = generate_disjuncts_iter 0 [] in
-      (* Since unravel >= 0, all_disjuncts_list will have at least one element. *)
       Z3.Boolean.mk_or ctx all_disjuncts_list
 
   (* Previous operator*)
-  let previous (ctx : Z3.context) (formula : Z3.Expr.expr) : Z3.Expr.expr =
-    let symbol = Z3.Symbol.mk_string ctx "previous" in
-    let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-    Z3.Expr.mk_app ctx func_decl [formula]
+  let previous (ctx : Z3.context) (decls: temporal_operator_decls) (formula : Z3.Expr.expr) : Z3.Expr.expr =
+    Z3.Expr.mk_app ctx decls.previous_decl [formula]
 
   (* Auxiliary function for the below since implementation *)
-  let rec since_aux (ctx : Z3.context) (formula1 : Z3.Expr.expr) (formula2 : Z3.Expr.expr) (n : int) : Z3.Expr.expr =
+  let rec since_aux (ctx : Z3.context) (decls: temporal_operator_decls) (formula1 : Z3.Expr.expr) (formula2 : Z3.Expr.expr) (n : int) : Z3.Expr.expr =
     if n = 0 then
       Logic.single_and ctx formula1 formula2
     else if n > 0 then
-      Logic.single_and ctx (previous ctx formula1) (since_aux ctx formula1 formula2 (n - 1))
+      Logic.single_and ctx (previous ctx decls formula1) (since_aux ctx decls formula1 formula2 (n - 1))
     else
-      previous ctx formula2
+      previous ctx decls formula2
 
-  let rec since_formula (ctx : Z3.context) (formula1 : Z3.Expr.expr) (formula2 : Z3.Expr.expr) (bound : int) (m : int) : Z3.Expr.expr =
+  let rec since_formula (ctx : Z3.context) (decls: temporal_operator_decls) (formula1 : Z3.Expr.expr) (formula2 : Z3.Expr.expr) (bound : int) (m : int) : Z3.Expr.expr =
     if m >= bound then
       Z3.Boolean.mk_false ctx
   else if m + 2 <= bound then
     Logic.single_or
       ctx
-      (since_aux ctx formula1 formula2 (m + 1))
-      (since_formula ctx formula1 formula2 bound (m + 1))
+      (since_aux ctx decls formula1 formula2 (m + 1))
+      (since_formula ctx decls formula1 formula2 bound (m + 1))
   else
     Z3.Boolean.mk_false ctx
 end
 
 (* Convert a term into a Z3 expression *)
-let rec term_to_z3 ctx term =
+let rec term_to_z3 ctx (decls: temporal_operator_decls) term =
   match term with
   | Ltlxms.Proposition p -> Z3.Boolean.mk_const ctx (Z3.Symbol.mk_string ctx p)
-  | Ltlxms.Intersection (t1, t2) -> Logic.single_and ctx (term_to_z3 ctx t1) (term_to_z3 ctx t2)
-  | Ltlxms.Union (t1, t2) -> Logic.single_or ctx (term_to_z3 ctx t1) (term_to_z3 ctx t2)
+  | Ltlxms.Intersection (t1, t2) -> Logic.single_and ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Ltlxms.Union (t1, t2) -> Logic.single_or ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
   | Ltlxms.Expand (t, value) -> 
       let expand_symbol = Z3.Symbol.mk_string ctx "expand" in
       let expand_func = Z3.FuncDecl.mk_func_decl ctx expand_symbol [Z3.Boolean.mk_sort ctx; Z3.Arithmetic.Real.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
-      Z3.Expr.mk_app ctx expand_func [term_to_z3 ctx t; Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float value)]
-  | Ltlxms.NextT t -> Temporal.nextt ctx (term_to_z3 ctx t)
+      Z3.Expr.mk_app ctx expand_func [term_to_z3 ctx decls t; Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float value)]
+  | Ltlxms.NextT t -> Temporal.nextt ctx decls (term_to_z3 ctx decls t)
   | Ltlxms.UntilT (t1, t2, unravel_depth) -> 
-      let e1 = term_to_z3 ctx t1 in
-      let e2 = term_to_z3 ctx t2 in
-      Temporal.until ctx e1 e2 unravel_depth
-  | Ltlxms.Negation t -> Logic.single_not ctx (term_to_z3 ctx t)
+      let e1 = term_to_z3 ctx decls t1 in
+      let e2 = term_to_z3 ctx decls t2 in
+      Temporal.until ctx decls e1 e2 unravel_depth
+  | Ltlxms.Negation t -> Logic.single_not ctx (term_to_z3 ctx decls t)
 
 (* Convert a formula into a Z3 expression *)
-let rec formula_to_z3 ctx formula =
+let rec formula_to_z3 ctx (decls: temporal_operator_decls) formula =
   match formula with
-  | Ltlxms.SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx t1) (term_to_z3 ctx t2)
-  | Ltlxms.And (f1, f2) -> Logic.single_and ctx (formula_to_z3 ctx f1) (formula_to_z3 ctx f2)
-  | Ltlxms.Or (f1, f2) -> Logic.single_or ctx (formula_to_z3 ctx f1) (formula_to_z3 ctx f2)
-  | Ltlxms.Not f -> Logic.single_not ctx (formula_to_z3 ctx f)
-  | Ltlxms.Next f -> Temporal.next ctx (formula_to_z3 ctx f)
-  | Ltlxms.Always f -> Temporal.always ctx (formula_to_z3 ctx f)
-  | Ltlxms.Eventually f -> Temporal.eventually ctx (formula_to_z3 ctx f)
-  | Ltlxms.Once f -> Temporal.once ctx (formula_to_z3 ctx f)
-  | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx t1) (term_to_z3 ctx t2)
-  | Ltlxms.Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx f1) (formula_to_z3 ctx f2)
-  | Ltlxms.Previous f -> Temporal.previous ctx (formula_to_z3 ctx f)
+  | Ltlxms.SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) (* Assuming sub_set_eq doesn't involve temporal ops directly *)
+  | Ltlxms.And (f1, f2) -> Logic.single_and ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Ltlxms.Or (f1, f2) -> Logic.single_or ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Ltlxms.Not f -> Logic.single_not ctx (formula_to_z3 ctx decls f)
+  | Ltlxms.Next f -> Temporal.next ctx decls (formula_to_z3 ctx decls f)
+  | Ltlxms.Always f -> Temporal.always ctx decls (formula_to_z3 ctx decls f)
+  | Ltlxms.Eventually f -> Temporal.eventually ctx decls (formula_to_z3 ctx decls f)
+  | Ltlxms.Once f -> Temporal.once ctx decls (formula_to_z3 ctx decls f)
+  | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) (* Assuming overlap doesn't involve temporal ops directly *)
+  | Ltlxms.Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Ltlxms.Previous f -> Temporal.previous ctx decls (formula_to_z3 ctx decls f)
   | Ltlxms.Until (f1, f2, unravel_depth) -> 
-      let e1 = formula_to_z3 ctx f1 in
-      let e2 = formula_to_z3 ctx f2 in
-      Temporal.until ctx e1 e2 unravel_depth
+      let e1 = formula_to_z3 ctx decls f1 in
+      let e2 = formula_to_z3 ctx decls f2 in
+      Temporal.until ctx decls e1 e2 unravel_depth
   | _ -> failwith "Unsupported formula type for conversion to Z3"
 end

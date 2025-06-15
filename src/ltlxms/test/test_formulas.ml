@@ -1,7 +1,8 @@
 open Z3
 open Formulas 
-(* Initialize Z3 context *)
-let ctx = mk_context []
+
+(* Initialize Z3 context - This should be done once per test run or per group of tests needing the same decls *)
+(* We will move ctx and decls initialization inside test_operation or make them global if all tests share them *)
 let verbose = true
 
 (* Debugging *)
@@ -37,17 +38,18 @@ let read_expected_output output_file =
   content
 
 (* Perform operation and compare with expected output *)
-let test_operation input_file output_file =
+(* Modified to accept ctx and decls *)
+let test_operation ctx decls input_file output_file =
   debug "Starting operation test";
   let input = read_input input_file in
   let expected_output = read_expected_output output_file in
   debug "Transforming input into Z3 expression";
 
-  (* Convert the input into a Z3 expression *)
+  (* Convert the input into a Z3 expression, passing decls *)
   let actual_output_expr =
     match input with
-    | `Term term -> Formulas.term_to_z3 ctx term
-    | `Formula formula -> Formulas.formula_to_z3 ctx formula
+    | `Term term -> Formulas.term_to_z3 ctx decls term
+    | `Formula formula -> Formulas.formula_to_z3 ctx decls formula
   in
 
   (* Convert the Z3 expression to a string *)
@@ -65,6 +67,25 @@ let test_operation input_file output_file =
 
 (* Run all tests *)
 let () =
+  (* Initialize Z3 context and temporal declarations ONCE for all tests in this run *)
+  let ctx = mk_context [] in
+  let bool_sort = Z3.Boolean.mk_sort ctx in
+  let shared_next_decl = Z3.FuncDecl.mk_func_decl_s ctx "next" [bool_sort] bool_sort in
+  let shared_nextt_decl = Z3.FuncDecl.mk_func_decl_s ctx "nextt" [bool_sort] bool_sort in
+  let shared_previous_decl = Z3.FuncDecl.mk_func_decl_s ctx "previous" [bool_sort] bool_sort in
+  let shared_once_decl = Z3.FuncDecl.mk_func_decl_s ctx "once" [bool_sort] bool_sort in
+  let shared_always_decl = Z3.FuncDecl.mk_func_decl_s ctx "always" [bool_sort] bool_sort in
+  let shared_eventually_decl = Z3.FuncDecl.mk_func_decl_s ctx "eventually" [bool_sort] bool_sort in
+  
+  let decls : temporal_operator_decls = {
+    next_decl = shared_next_decl;
+    nextt_decl = shared_nextt_decl;
+    previous_decl = shared_previous_decl;
+    once_decl = shared_once_decl;
+    always_decl = shared_always_decl;
+    eventually_decl = shared_eventually_decl;
+  } in
+
   let files = Sys.readdir "." in
   Array.iter (fun file ->
     if Filename.check_suffix file ".json" then
@@ -72,7 +93,8 @@ let () =
       let output_file = Filename.chop_suffix file ".json" ^ "out.txt" in
       if Sys.file_exists output_file then (
         debug (Printf.sprintf "Running test with input file: %s and output file: %s\n" input_file output_file);
-        test_operation input_file output_file
+        (* Pass ctx and decls to test_operation *)
+        test_operation ctx decls input_file output_file
       ) else
         Printf.printf "Output file %s not found for input file %s\n" output_file input_file
   ) files
