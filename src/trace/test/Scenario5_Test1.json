@@ -8,12 +8,12 @@
                     "ID": 1,
                     "type": "Car",
                     "position": {"x": 0.0, "y": 0.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
-                    "region": {"type": "circle", "radius": 1.0} 
+                    "region": {"type": "circle", "radius": 1.0}
                 },
                 {
                     "ID": 2,
                     "type": "Car",
-                    "position": {"x": 10.0, "y": 10.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
+                    "position": {"x": 1000.0, "y": 1000.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
                     "region": {"type": "circle", "radius": 1.0}
                 }
             ]
@@ -25,13 +25,13 @@
                 {
                     "ID": 1,
                     "type": "Car",
-                    "position": {"x": 0.0, "y": 0.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0}, 
-                    "region": {"type": "circle", "radius": 1.0} 
+                    "position": {"x": 1.0, "y": 1.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
+                    "region": {"type": "circle", "radius": 1.0}
                 },
                 {
                     "ID": 2,
                     "type": "Car",
-                    "position": {"x": 0.0, "y": 0.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0}, 
+                    "position": {"x": 1000.0, "y": 1000.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
                     "region": {"type": "circle", "radius": 1.0}
                 }
             ]
@@ -43,13 +43,13 @@
                 {
                     "ID": 1,
                     "type": "Car",
-                    "position": {"x": 1.0, "y": 1.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
+                    "position": {"x": 5.0, "y": 5.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
                     "region": {"type": "circle", "radius": 1.0}
                 },
                 {
                     "ID": 2,
                     "type": "Car",
-                    "position": {"x": 1.0, "y": 1.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
+                    "position": {"x": 5.5, "y": 5.0, "z": 0, "yaw": 0, "pitch": 0, "roll": 0},
                     "region": {"type": "circle", "radius": 1.0}
                 }
             ]

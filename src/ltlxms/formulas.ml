@@ -31,6 +31,26 @@ module Logic = struct
     let symbol = Z3.Symbol.mk_string ctx "overlap" in
     let func_decl = Z3.FuncDecl.mk_func_decl ctx symbol [Z3.Boolean.mk_sort ctx; Z3.Boolean.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
     Z3.Expr.mk_app ctx func_decl [expr1; expr2]
+  let list_and ctx exprs =
+    match exprs with
+    | [] -> Z3.Boolean.mk_true ctx
+    | [e] -> e
+    | _ -> Z3.Boolean.mk_and ctx exprs
+  let list_or ctx exprs =
+    match exprs with
+    | [] -> Z3.Boolean.mk_false ctx
+    | [e] -> e
+    | _ -> Z3.Boolean.mk_or ctx exprs
+  let circle_overlap ctx (x1, y1, r1) (x2, y2, r2) =
+    let dx = Z3.Arithmetic.mk_sub ctx [x1; x2] in
+    let dy = Z3.Arithmetic.mk_sub ctx [y1; y2] in
+    let dist2 = Z3.Arithmetic.mk_add ctx [
+      Z3.Arithmetic.mk_mul ctx [dx; dx];
+      Z3.Arithmetic.mk_mul ctx [dy; dy]
+    ] in
+    let rsum = Z3.Arithmetic.mk_add ctx [r1; r2] in
+    let rsum2 = Z3.Arithmetic.mk_mul ctx [rsum; rsum] in
+    Z3.Arithmetic.mk_le ctx dist2 rsum2
 end
 
 (* Module for temporal logic operations *)
@@ -136,7 +156,21 @@ let rec term_to_z3 ctx (decls: temporal_operator_decls) term =
 (* Convert a formula into a Z3 expression *)
 let rec formula_to_z3 ctx (decls: temporal_operator_decls) formula =
   match formula with
-  | Ltlxms.SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) (* Assuming sub_set_eq doesn't involve temporal ops directly *)
+  | Ltlxms.SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Ltlxms.Collides (t1, t2, k) ->
+    let disc = Ltlxms.Disconnected (t1, t2) in
+    let over = Ltlxms.Overlap (t1, t2) in
+    formula_to_z3 ctx decls (Ltlxms.Until (disc, over, k))
+  | Ltlxms.Equal (t1, t2) ->
+      let sub1 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) in
+      let sub2 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t2) (term_to_z3 ctx decls t1) in
+      Logic.single_and ctx sub1 sub2
+  | Ltlxms.Disconnected (t1, t2) ->
+      let not_t2 = Ltlxms.Negation t2 in
+      let not_t1 = Ltlxms.Negation t1 in
+      let sub1 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls not_t2) in
+      let sub2 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t2) (term_to_z3 ctx decls not_t1) in
+      Logic.single_and ctx sub1 sub2
   | Ltlxms.And (f1, f2) -> Logic.single_and ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
   | Ltlxms.Or (f1, f2) -> Logic.single_or ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
   | Ltlxms.Not f -> Logic.single_not ctx (formula_to_z3 ctx decls f)
@@ -144,7 +178,7 @@ let rec formula_to_z3 ctx (decls: temporal_operator_decls) formula =
   | Ltlxms.Always f -> Temporal.always ctx decls (formula_to_z3 ctx decls f)
   | Ltlxms.Eventually f -> Temporal.eventually ctx decls (formula_to_z3 ctx decls f)
   | Ltlxms.Once f -> Temporal.once ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) (* Assuming overlap doesn't involve temporal ops directly *)
+  | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
   | Ltlxms.Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
   | Ltlxms.Previous f -> Temporal.previous ctx decls (formula_to_z3 ctx decls f)
   | Ltlxms.Until (f1, f2, unravel_depth) -> 

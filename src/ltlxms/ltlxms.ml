@@ -10,6 +10,9 @@ type term =
 
 type formula =
   | SubSetEq of term * term
+  | Collides of term * term * int
+  | Equal of term * term
+  | Disconnected of term * term
   | And of formula * formula
   | Or of formula * formula
   | Not of formula
@@ -21,9 +24,7 @@ type formula =
   | Since of formula * formula
   | Implies of formula * formula
   | Overlap of term * term
-  | Equal of term * term
   | Include of term * term
-  | Disconnect of term * term
   | AlwaysPast of formula
   | Once of formula
   [@@deriving yojson]

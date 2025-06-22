@@ -1,3 +1,17 @@
+(* Running Instructions:
+1. Run "dune build" to compile
+2. Navigate to the project root directory
+3. Run "dune exec src/ltlxms/test/test_until_trace.exe"
+*)
+
+(*
+C1 U C2 DONE
+C1 SubSetEq C2 DONE 
+C1 SubSetEq C2 and C2 SubSetEq C1 === Equal DONE
+(C1 SubSetEq Negation C2) and (C2 SubSetEq Negation C1)=== Disconected DONE
+(C1 Disconected C2) Until (C1 Overlap C2) DONE
+*)
+
 open Z3
 open Z3.Arithmetic
 open Trace.TraceStructure 
@@ -9,6 +23,14 @@ let debug_mode = false
 let create_z3_context () =
   let cfg = [("model", "true"); ("proof", "false")] in
   Z3.mk_context cfg
+
+let get_circle_params (trace: trace) car_id t ctx =
+    let event = List.nth trace.trace t in
+    let element = List.find (fun e -> e.id = car_id) event.elements in
+    let x = Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float element.position.x) in
+    let y = Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float element.position.y) in
+    let r = Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float element.region.radius) in
+    (x, y, r)
 
 (* Get the car expressions*)
 let get_car_geometric_expressions ctx (trace: trace) (target_car_id: int) (x_var: Expr.expr) (y_var: Expr.expr) : Expr.expr list =
@@ -53,6 +75,45 @@ let get_car_geometric_expressions ctx (trace: trace) (target_car_id: int) (x_var
     )
   ) trace.trace
 
+(* Temporal unrolling *)
+let rec unroll_formula_over_trace ctx _ parsed_trace formula car1_exprs car2_exprs step =
+  let num_steps = List.length car1_exprs in
+  match formula with
+  | Ltlxms.Always f ->
+      let sub_exprs = List.init num_steps (fun t ->
+        unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs t
+      ) in
+      Formulas.Logic.list_and ctx sub_exprs
+  | Ltlxms.Eventually f ->
+      let sub_exprs = List.init num_steps (fun t ->
+        unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs t
+      ) in
+      Formulas.Logic.list_or ctx sub_exprs
+  | Ltlxms.Next f ->
+      if step + 1 < num_steps then
+        unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs (step + 1)
+      else
+        Formulas.Logic.list_and ctx []  (* or mk_true *)
+  | Ltlxms.Previous f ->
+      if step > 0 then
+        unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs (step - 1)
+      else
+        Formulas.Logic.list_and ctx []  (* or mk_true *)
+  | Ltlxms.SubSetEq (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+      Formulas.Logic.sub_set_eq ctx (List.nth car1_exprs step) (List.nth car2_exprs step)
+  | Ltlxms.Overlap (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+      let (x1, y1, r1) = get_circle_params parsed_trace 1 step ctx in
+      let (x2, y2, r2) = get_circle_params parsed_trace 2 step ctx in
+      Formulas.Logic.circle_overlap ctx (x1, y1, r1) (x2, y2, r2)
+  | Ltlxms.Disconnected (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+      let not_c2 = Formulas.Logic.single_not ctx (List.nth car2_exprs step) in
+      let not_c1 = Formulas.Logic.single_not ctx (List.nth car1_exprs step) in
+      let sub1 = Formulas.Logic.sub_set_eq ctx (List.nth car1_exprs step) not_c2 in
+      let sub2 = Formulas.Logic.sub_set_eq ctx (List.nth car2_exprs step) not_c1 in
+      Formulas.Logic.single_and ctx sub1 sub2
+  | _ ->
+      failwith "Temporal unrolling for this formula not implemented."
+
 let () =
   let ctx = create_z3_context () in
 
@@ -74,7 +135,7 @@ let () =
     eventually_decl = shared_eventually_decl;
   } in
 
-  let trace_file_path = "/home/gmp/Projeto/rmtld3synth/src/trace/test/Scenario5_Test1.json" in
+  let trace_file_path = "src/trace/test/Scenario5_Test1.json" in
   Printf.printf "Processing trace file: %s\n" trace_file_path; 
 
   let json = Yojson.Basic.from_file trace_file_path in
@@ -95,72 +156,40 @@ let () =
   if List.length car1_event_expressions <> num_timestamps || List.length car2_event_expressions <> num_timestamps then
     failwith "Could not extract expressions for all events for specified cars";
 
-  let e1_base = List.hd car1_event_expressions in (* This is e1 at t=0 *)
-  let e2_base = List.hd car2_event_expressions in (* This is e2 at t=0 *)
+  (* Read property from file *)
+  let property_file_path = "src/ltlxms/test/property.json" in
+  Printf.printf "Reading property formula from: %s\n" property_file_path;
+  let property_json = Yojson.Safe.from_file property_file_path in
+  let property_formula =
+    match Ltlxms.formula_of_yojson property_json with
+    | Ok f -> f
+    | Error err -> failwith ("Failed to parse property formula: " ^ err)
+  in
 
-  let unravel_depth = num_timestamps - 1 in
+  let property_z3 = Formulas.formula_to_z3 ctx temporal_decls property_formula
+  in
 
-  Printf.printf "Base expression for Car 1 (e1_base at t=0): %s\n" (Expr.to_string e1_base);
-  Printf.printf "Base expression for Car 2 (e2_base at t=0): %s\n" (Expr.to_string e2_base);
-  Printf.printf "Unravelling depth for Until (k_unravel): %d\n" unravel_depth;
-
-  if debug_mode then Printf.printf "DEBUG: Calling Formulas.Temporal.until with e1_base, e2_base, depth %d\n" unravel_depth;
-  let until_property_z3 = Formulas.Temporal.until ctx temporal_decls e1_base e2_base unravel_depth in
-  Printf.printf "Z3 expression for (e1_base U e2_base): %s\n" (Expr.to_string until_property_z3);
+  Printf.printf "Z3 expression for property: %s\n" (Expr.to_string property_z3);
 
   let solver = Solver.mk_simple_solver ctx in
-  if debug_mode then Printf.printf "DEBUG: Adding to solver: until_property_z3\n";
-  Solver.add solver [until_property_z3];
+  Solver.add solver [property_z3];
 
-  if debug_mode then Printf.printf "DEBUG: Defining 'next' operator semantics:\n";
-  
-  if debug_mode then
-    if num_timestamps >= 2 then ( 
-      let e1_at_t0 = List.nth car1_event_expressions 0 in (* Same as e1_base *)
-      let e1_at_t1 = List.nth car1_event_expressions 1 in (* e1 at the next timestamp *)
-      let symbolic_next_of_e1_at_t0 = Formulas.Temporal.next ctx temporal_decls e1_at_t0 in
-
-      Printf.printf "\n--- DETAILED NEXT OPERATOR CHECK (Car 1, t=0 to t=1) ---\n";
-      Printf.printf "Expression for e1 at t=0 (e1_base) : %s\n" (Expr.to_string e1_at_t0);
-      Printf.printf "Symbolic (next e1_base)            : %s\n" (Expr.to_string symbolic_next_of_e1_at_t0);
-      Printf.printf "Expression for e1 at t=1           : %s\n" (Expr.to_string e1_at_t1);
-      Printf.printf "--- END DETAILED NEXT OPERATOR CHECK ---\n\n";
-    );
-
+  (* Add all "next" operator semantics *)
   for t = 0 to num_timestamps - 2 do
     (* Car 1 *)
     let current_expr_c1 = List.nth car1_event_expressions t in
     let next_actual_expr_c1 = List.nth car1_event_expressions (t + 1) in
-    
     let z3_symbolic_next_of_current_c1 = Formulas.Temporal.next ctx temporal_decls current_expr_c1 in
-    
-    if debug_mode then Printf.printf "DEBUG: For Car 1, t=%d:\n" t;
-    if debug_mode then Printf.printf "DEBUG:   current_expr_c1 (g1_t%d): %s\n" t (Expr.to_string current_expr_c1);
-    if debug_mode then Printf.printf "DEBUG:   next_actual_expr_c1 (g1_t%d): %s\n" (t+1) (Expr.to_string next_actual_expr_c1);
-    if debug_mode then Printf.printf "DEBUG:   Formulas.Temporal.next(g1_t%d): %s\n" t (Expr.to_string z3_symbolic_next_of_current_c1);
-    
     let c1_next_definition = Boolean.mk_iff ctx z3_symbolic_next_of_current_c1 next_actual_expr_c1 in
-    if debug_mode then Printf.printf "DEBUG:   Asserting for Car 1, t=%d: iff(%s, %s)\n" t (Expr.to_string z3_symbolic_next_of_current_c1) (Expr.to_string next_actual_expr_c1);
     Solver.add solver [c1_next_definition];
 
     (* Car 2 *)
     let current_expr_c2 = List.nth car2_event_expressions t in
     let next_actual_expr_c2 = List.nth car2_event_expressions (t + 1) in
-    if debug_mode then Printf.printf "DEBUG: For Car 2, t=%d:\n" t;
-    if debug_mode then Printf.printf "DEBUG:   current_expr_c2 (g2_t%d): %s\n" t (Expr.to_string current_expr_c2);
-    if debug_mode then Printf.printf "DEBUG:   next_actual_expr_c2 (g2_t%d): %s\n" (t+1) (Expr.to_string next_actual_expr_c2);
     let z3_symbolic_next_of_current_c2 = Formulas.Temporal.next ctx temporal_decls current_expr_c2 in
-    if debug_mode then Printf.printf "DEBUG:   Formulas.Temporal.next(g2_t%d): %s\n" t (Expr.to_string z3_symbolic_next_of_current_c2);
     let c2_next_definition = Boolean.mk_iff ctx z3_symbolic_next_of_current_c2 next_actual_expr_c2 in
-    if debug_mode then Printf.printf "DEBUG:   Asserting for Car 2, t=%d: iff(%s, %s)\n" t (Expr.to_string z3_symbolic_next_of_current_c2) (Expr.to_string next_actual_expr_c2);
     Solver.add solver [c2_next_definition];
   done;
-  
-  (*W/out this solver always just choses a point inside e2_base radius*)
-  let not_e2_base_at_t0 = Boolean.mk_not ctx e2_base in
-  if debug_mode then Printf.printf "DEBUG: Adding constraint: NOT (e2_base at t=0): %s\n" (Expr.to_string not_e2_base_at_t0);
-  Solver.add solver [not_e2_base_at_t0]; 
-  Printf.printf "Added constraint: NOT (e2_base at t=0)\n";
 
   if debug_mode then Printf.printf "\nDEBUG: Final assertions in solver before check:\n%s\n" (Solver.to_string solver);
 
