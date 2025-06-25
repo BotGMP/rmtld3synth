@@ -1,9 +1,14 @@
 (* Running Instructions:
 1. Run "dune build" to compile
 2. Navigate to the project root directory
-3. Run "dune exec src/ltlxms/test/test_until_trace.exe"
+3. Run "dune exec src/ltlxms/test/test_until_trace.exe src/trace/test/Scenario5_Test1.json src/ltlxms/test/property.json"
 *)
-
+(*
+TODO :
+ ARGUMENTS DONE
+ BASH SCRIPT (ARGS & Flags & Verbose/Debug)
+ TEST CASES WITH DIFFERENT TRACES
+ *)
 (*
 C1 U C2 DONE
 C1 SubSetEq C2 DONE 
@@ -113,8 +118,8 @@ let rec unroll_formula_over_trace ctx _ parsed_trace formula car1_exprs car2_exp
       Formulas.Logic.single_and ctx sub1 sub2
   | _ ->
       failwith "Temporal unrolling for this formula not implemented."
-
-let () =
+      
+let run_ltlxms_trace_check ~trace_file ~property_file =
   let ctx = create_z3_context () in
 
   (* Create shared function declarations for temporal operators *)
@@ -125,7 +130,7 @@ let () =
   let shared_once_decl = FuncDecl.mk_func_decl_s ctx "once" [bool_sort] bool_sort in
   let shared_always_decl = FuncDecl.mk_func_decl_s ctx "always" [bool_sort] bool_sort in
   let shared_eventually_decl = FuncDecl.mk_func_decl_s ctx "eventually" [bool_sort] bool_sort in
-  
+
   let temporal_decls : temporal_operator_decls = {
     next_decl = shared_next_decl;
     nextt_decl = shared_nextt_decl;
@@ -135,10 +140,8 @@ let () =
     eventually_decl = shared_eventually_decl;
   } in
 
-  let trace_file_path = "src/trace/test/Scenario5_Test1.json" in
-  Printf.printf "Processing trace file: %s\n" trace_file_path; 
-
-  let json = Yojson.Basic.from_file trace_file_path in
+  Printf.printf "Processing trace file: %s\n" trace_file; 
+  let json = Yojson.Basic.from_file trace_file in
   let parsed_trace = Trace.TraceStructure.parse_trace json in 
 
   let num_timestamps = List.length parsed_trace.trace in
@@ -156,18 +159,15 @@ let () =
   if List.length car1_event_expressions <> num_timestamps || List.length car2_event_expressions <> num_timestamps then
     failwith "Could not extract expressions for all events for specified cars";
 
-  (* Read property from file *)
-  let property_file_path = "src/ltlxms/test/property.json" in
-  Printf.printf "Reading property formula from: %s\n" property_file_path;
-  let property_json = Yojson.Safe.from_file property_file_path in
+  Printf.printf "Reading property formula from: %s\n" property_file;
+  let property_json = Yojson.Safe.from_file property_file in
   let property_formula =
     match Ltlxms.formula_of_yojson property_json with
     | Ok f -> f
     | Error err -> failwith ("Failed to parse property formula: " ^ err)
   in
 
-  let property_z3 = Formulas.formula_to_z3 ctx temporal_decls property_formula
-  in
+  let property_z3 = Formulas.formula_to_z3 ctx temporal_decls property_formula in
 
   Printf.printf "Z3 expression for property: %s\n" (Expr.to_string property_z3);
 
@@ -205,3 +205,10 @@ let () =
       Printf.printf "UNSATISFIABLE \n"
   | UNKNOWN ->
       Printf.printf "Solver returned UNKNOWN. Reason: %s\n" (Solver.get_reason_unknown solver)
+
+(* Standalone entry point for command-line usage *)
+let () =
+  if Array.length Sys.argv = 3 then
+    run_ltlxms_trace_check ~trace_file:Sys.argv.(1) ~property_file:Sys.argv.(2)
+  else if Array.length Sys.argv > 1 then
+    Printf.printf "Usage: %s <trace_file.json> <property_file.json>\n" Sys.argv.(0)
