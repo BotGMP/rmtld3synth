@@ -4,7 +4,7 @@
 set -e
 
 err_report() {
-  echo "Error on line $1"
+  echo "[test.sh] Error on line $1"
 }
 
 trap 'err_report $LINENO' ERR

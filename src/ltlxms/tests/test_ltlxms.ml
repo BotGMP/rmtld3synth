@@ -2,7 +2,7 @@ open Yojson.Basic.Util
 open Ltlxms.Syntax
 
 (* Example function to parse JSON input and create a formula *)
-let rec parse_formula json = 
+let rec parse_formula json =
   match json |> member "type" |> to_string with
   | "Proposition" -> Proposition (json |> member "value" |> to_string)
   | "Intersection" ->
@@ -20,16 +20,20 @@ let rec parse_formula json =
 
 (* Test case *)
 let test_parse_formula () =
-  let json_input = Yojson.Basic.from_string {|
+  let json_input =
+    Yojson.Basic.from_string
+      {|
     {
       "type": "Intersection",
       "left": { "type": "Proposition", "value": "p" },
       "right": { "type": "Proposition", "value": "q" }
     }
-  |} in
+  |}
+  in
   let formula = parse_formula json_input in
   match formula with
-  | Intersection (Proposition "p", Proposition "q") -> print_endline "Test passed!"
+  | Intersection (Proposition "p", Proposition "q") ->
+      print_endline "Test passed!"
   | _ -> print_endline "Test failed!"
 
 let () = test_parse_formula ()

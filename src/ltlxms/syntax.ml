@@ -1,6 +1,6 @@
-(* This module defines the syntax for terms and formulas used in LTLXMS.
-   It includes types for propositions, logical operations, and temporal operators,
-   along with their JSON serialization and deserialization. *)
+(* This module defines the syntax for terms and formulas used in LTLXMS. It
+   includes types for propositions, logical operations, and temporal
+   operators, along with their JSON serialization and deserialization. *)
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -12,7 +12,7 @@ type term =
   | NextT of term
   | Expand of term * float
   | UntilT of term * term * int
-  [@@deriving yojson]
+[@@deriving yojson]
 
 type formula =
   | SubSetEq of term * term
@@ -33,4 +33,4 @@ type formula =
   | Include of term * term
   | AlwaysPast of formula
   | Once of formula
-  [@@deriving yojson]
+[@@deriving yojson]

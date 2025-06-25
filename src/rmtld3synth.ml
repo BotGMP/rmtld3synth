@@ -9,7 +9,7 @@ open Interface.Rmdslparser
 open Dsl
 
 open Ltlxms
-open Ltlxms.Trace.Xyz
+open Sequence.Snapshot
 
 let helper = mk_helper
 
