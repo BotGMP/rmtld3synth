@@ -9,7 +9,7 @@ open Interface.Rmdslparser
 open Dsl
 
 open Ltlxms
-open Trace
+open Ltlxms.Trace.Xyz
 
 let helper = mk_helper
 
@@ -480,37 +480,46 @@ let _ =
         print_endline "Synthesis for LTLXMS language" ;
         print_endline
           "--------------------------------------------------------------------------------\n" ) ;
-        let property_file = !ltlxms_lang in
-        let trace_file =
-          try get_setting_string "environment" helper
-          with _ -> ""
-        in
-        if property_file = "" || trace_file = "" then
-          Printf.eprintf "Error: Both --input-ltlxms <property.json> and --include <trace.json> must be provided.\n"
+    let property_file = !ltlxms_lang in
+    let trace_file =
+      try get_setting_string "environment" helper
+      with _ -> ""
+    in
+    if property_file = "" || trace_file = "" then
+      Printf.eprintf "Error: Both --input-ltlxms <property.json> and --include <trace.json> must be provided.\n"
+    else (
+      (* Temp file if none exists *)
+      let trace_path =
+        if Sys.file_exists trace_file then trace_file
         else (
-          (* Temp file if none exists*)
-          let trace_path =
-            if Sys.file_exists trace_file then trace_file
-            else (
-              let tmp = Filename.temp_file "trace" ".json" in
-              let oc = open_out tmp in
-              output_string oc trace_file;
-              close_out oc;
-              tmp
-            )
-          in
-          (* Trace.parse_trace *)
-          (* Ltlxms.formula_to_z3 *)
-          let cmd =
-            Printf.sprintf
-              "dune exec src/ltlxms/test/test_until_trace.exe %s %s"
-              trace_path property_file
-          in
-          let status = Sys.command cmd in
-          if status <> 0 then Printf.eprintf "Error: test_until_trace failed\n"
+          let tmp = Filename.temp_file "trace" ".json" in
+          let oc = open_out tmp in
+          output_string oc trace_file;
+          close_out oc;
+          tmp
         )
+      in
+      (* --- Parse trace and property files to check validity --- *)
+      (try
+        let trace_json = Yojson.Safe.from_file trace_path in
+        let _parsed_trace = parse_trace trace_json in
+        let property_json = Yojson.Safe.from_file property_file in
+        let _ = Ltlxms.formula_of_yojson property_json in
+        ()
+      with e ->
+        Printf.eprintf "Error parsing trace or property file: %s\n" (Printexc.to_string e);
+        exit 1
+      );
+      (* --- Continue with system call --- *)
+      let cmd =
+        Printf.sprintf
+          "dune exec src/ltlxms/test/test_until_trace.exe %s %s"
+          trace_path property_file
+      in
+      let status = Sys.command cmd in
+      if status <> 0 then Printf.eprintf "Error: test_until_trace failed\n"
+    )
   )
-
   else if !ocaml_lang then (
     verb_m 1 (fun _ ->
         print_endline "Synthesis for Ocaml language" ;

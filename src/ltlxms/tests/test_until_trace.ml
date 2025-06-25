@@ -19,8 +19,9 @@ C1 SubSetEq C2 and C2 SubSetEq C1 === Equal DONE
 
 open Z3
 open Z3.Arithmetic
-open Trace.TraceStructure 
-open Formulas 
+open Trace.Xyz
+open Ltlxms.Syntax
+open Ltlxms.Encoding
 
 (* Global debug flag *)
 let debug_mode = false
@@ -84,33 +85,33 @@ let get_car_geometric_expressions ctx (trace: trace) (target_car_id: int) (x_var
 let rec unroll_formula_over_trace ctx _ parsed_trace formula car1_exprs car2_exprs step =
   let num_steps = List.length car1_exprs in
   match formula with
-  | Ltlxms.Always f ->
+  | Always f ->
       let sub_exprs = List.init num_steps (fun t ->
         unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs t
       ) in
       Formulas.Logic.list_and ctx sub_exprs
-  | Ltlxms.Eventually f ->
+  | Eventually f ->
       let sub_exprs = List.init num_steps (fun t ->
         unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs t
       ) in
       Formulas.Logic.list_or ctx sub_exprs
-  | Ltlxms.Next f ->
+  | Next f ->
       if step + 1 < num_steps then
         unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs (step + 1)
       else
         Formulas.Logic.list_and ctx []  (* or mk_true *)
-  | Ltlxms.Previous f ->
+  | Previous f ->
       if step > 0 then
         unroll_formula_over_trace ctx () parsed_trace f car1_exprs car2_exprs (step - 1)
       else
         Formulas.Logic.list_and ctx []  (* or mk_true *)
-  | Ltlxms.SubSetEq (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+  | SubSetEq (Proposition "C1", Proposition "C2") ->
       Formulas.Logic.sub_set_eq ctx (List.nth car1_exprs step) (List.nth car2_exprs step)
-  | Ltlxms.Overlap (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+  | Overlap (Proposition "C1", Proposition "C2") ->
       let (x1, y1, r1) = get_circle_params parsed_trace 1 step ctx in
       let (x2, y2, r2) = get_circle_params parsed_trace 2 step ctx in
       Formulas.Logic.circle_overlap ctx (x1, y1, r1) (x2, y2, r2)
-  | Ltlxms.Disconnected (Ltlxms.Proposition "C1", Ltlxms.Proposition "C2") ->
+  | Disconnected (Proposition "C1", Proposition "C2") ->
       let not_c2 = Formulas.Logic.single_not ctx (List.nth car2_exprs step) in
       let not_c1 = Formulas.Logic.single_not ctx (List.nth car1_exprs step) in
       let sub1 = Formulas.Logic.sub_set_eq ctx (List.nth car1_exprs step) not_c2 in
@@ -142,7 +143,7 @@ let run_ltlxms_trace_check ~trace_file ~property_file =
 
   Printf.printf "Processing trace file: %s\n" trace_file; 
   let json = Yojson.Basic.from_file trace_file in
-  let parsed_trace = Trace.TraceStructure.parse_trace json in 
+  let parsed_trace = parse_trace json in 
 
   let num_timestamps = List.length parsed_trace.trace in
   if num_timestamps = 0 then failwith "Trace is empty";
@@ -161,11 +162,7 @@ let run_ltlxms_trace_check ~trace_file ~property_file =
 
   Printf.printf "Reading property formula from: %s\n" property_file;
   let property_json = Yojson.Safe.from_file property_file in
-  let property_formula =
-    match Ltlxms.formula_of_yojson property_json with
-    | Ok f -> f
-    | Error err -> failwith ("Failed to parse property formula: " ^ err)
-  in
+  let property_formula = formula_of_yojson property_json in
 
   let property_z3 = Formulas.formula_to_z3 ctx temporal_decls property_formula in
 
