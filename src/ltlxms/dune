@@ -3,5 +3,5 @@
  (public_name rmtld3synth.ltlxms)
  (libraries z3 yojson)
  (preprocess
-  (pps ppx_deriving_yojson))
+  (pps ppx_yojson_conv))
  (modules syntax encoding))
