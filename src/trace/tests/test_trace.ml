@@ -1,4 +1,4 @@
-open Trace.TraceStructure
+open Trace.Xyz
 
 (*To strings*)
 let string_of_position pos =
@@ -23,7 +23,8 @@ let string_of_trace tr =
 
 (* Main function to read the JSON file, parse it, and print the trace *)
 let () =
-  let json_file = "/home/gmp/Projeto/rmtld3synth/src/trace/test/Scenario1_Test1.json" in
+  Printf.printf "Current working directory: %s\n" (Sys.getcwd ());
+  let json_file = "./../../../../../src/trace/tests/Scenario1_Test1.json" in
   let json = Yojson.Basic.from_file json_file in
   let parsed_trace = parse_trace json in
   Printf.printf "Parsed trace successfully!\n";

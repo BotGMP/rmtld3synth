@@ -5,10 +5,10 @@
 
 (test
  (name test_formulas)
- (libraries z3 formulas yojson ltlxms)
+ (libraries z3 yojson ltlxms)
  (modules test_formulas))
 
 (executable
  (name test_until_trace)
  (modules test_until_trace)
- (libraries ltlxms formulas trace z3 yojson) )
+ (libraries ltlxms trace z3 yojson))

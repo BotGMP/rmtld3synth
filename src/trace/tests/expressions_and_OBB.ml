@@ -1,7 +1,7 @@
 open Z3
 open Z3.Arithmetic
 open Z3.Boolean
-open Trace.TraceStructure
+open Trace.Xyz
 
 let create_z3_context () =
   let cfg = [("model", "true"); ("proof", "false")] in

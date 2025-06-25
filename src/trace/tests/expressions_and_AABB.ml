@@ -1,6 +1,6 @@
 open Z3
 open Z3.Arithmetic
-open Trace.TraceStructure
+open Trace.Xyz
 
 let create_z3_context () =
   let cfg = [("model", "true"); ("proof", "false")] in
@@ -84,7 +84,7 @@ let () =
     Printf.printf "Processing file: %s\n" json_path;
 
     let json = Yojson.Basic.from_file json_path in
-    let parsed_trace = Trace.TraceStructure.parse_trace json in 
+    let parsed_trace = parse_trace json in 
 
     let event_data_list = create_event_expressions ctx parsed_trace in
 

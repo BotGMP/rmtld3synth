@@ -1,5 +1,5 @@
 open Yojson.Basic.Util
-open Ltlxms
+open Ltlxms.Syntax
 
 (* Example function to parse JSON input and create a formula *)
 let rec parse_formula json = 

@@ -1,5 +1,4 @@
 open Z3
-open Formulas 
 
 (* Initialize Z3 context - This should be done once per test run or per group of tests needing the same decls *)
 (* We will move ctx and decls initialization inside test_operation or make them global if all tests share them *)
@@ -14,10 +13,10 @@ let read_input json_file =
   debug (Printf.sprintf "Reading input from %s" json_file);
   let json = Yojson.Safe.from_file json_file in
   debug (Printf.sprintf "Parsed JSON: %s" (Yojson.Safe.to_string json));
-  match Ltlxms.term_of_yojson json with
+  match Ltlxms.Syntax.term_of_yojson json with
   | Ok term -> `Term term
   | Error _ -> (
-      match Ltlxms.formula_of_yojson json with
+      match Ltlxms.Syntax.formula_of_yojson json with
       | Ok formula -> `Formula formula
       | Error err -> failwith (Printf.sprintf "Failed to parse input: %s" err)
     )
@@ -48,8 +47,8 @@ let test_operation ctx decls input_file output_file =
   (* Convert the input into a Z3 expression, passing decls *)
   let actual_output_expr =
     match input with
-    | `Term term -> Formulas.term_to_z3 ctx decls term
-    | `Formula formula -> Formulas.formula_to_z3 ctx decls formula
+    | `Term term -> Ltlxms.Encoding.Formulas.term_to_z3 ctx decls term
+    | `Formula formula -> Ltlxms.Encoding.Formulas.formula_to_z3 ctx decls formula
   in
 
   (* Convert the Z3 expression to a string *)
@@ -77,7 +76,7 @@ let () =
   let shared_always_decl = Z3.FuncDecl.mk_func_decl_s ctx "always" [bool_sort] bool_sort in
   let shared_eventually_decl = Z3.FuncDecl.mk_func_decl_s ctx "eventually" [bool_sort] bool_sort in
   
-  let decls : temporal_operator_decls = {
+  let decls : Ltlxms.Encoding.temporal_operator_decls = {
     next_decl = shared_next_decl;
     nextt_decl = shared_nextt_decl;
     previous_decl = shared_previous_decl;
