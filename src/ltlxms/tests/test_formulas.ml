@@ -15,11 +15,15 @@ let read_input json_file =
   let json = Yojson.Safe.from_file json_file in
   debug (Printf.sprintf "Parsed JSON: %s" (Yojson.Safe.to_string json)) ;
   try
-    let formula = Ltlxms.Syntax.formula_of_yojson json in
-    `Formula formula
-  with exn ->
-    failwith
-      (Printf.sprintf "Failed to parse input: %s" (Printexc.to_string exn))
+    let term = Ltlxms.Syntax.term_of_yojson json in
+    `Term term
+  with _ -> (
+    try
+      let formula = Ltlxms.Syntax.formula_of_yojson json in
+      `Formula formula
+    with exn ->
+      failwith
+        (Printf.sprintf "Failed to parse input: %s" (Printexc.to_string exn)) )
 
 (* Read expected output *)
 let read_expected_output output_file =
@@ -93,6 +97,7 @@ let () =
     ; always_decl= shared_always_decl
     ; eventually_decl= shared_eventually_decl }
   in
+  Sys.chdir "./../../../../../src/ltlxms/tests" ;
   let files = Sys.readdir "." in
   Array.iter
     (fun file ->
