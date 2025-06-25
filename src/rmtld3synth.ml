@@ -8,6 +8,9 @@ open Interface
 open Interface.Rmdslparser
 open Dsl
 
+open Ltlxms
+open Trace
+
 let helper = mk_helper
 
 let ltlxms_lang = ref ""
@@ -84,7 +87,9 @@ let set_exp v =
   set_setting "input_exp" (Fm (formula_of_sexp (Sexp.of_string v))) helper
 
 let set_ltlxms v =
-  ltlxms_lang := v
+  ltlxms_lang := v;
+  (* dummy formula to bypass the check and use ltlxms *)
+  set_setting "input_exp" (Fm (Prop "a")) helper
 
 let set_exp_dsl v =
   set_setting "input_exp_dsl" (Txt v) helper ;
@@ -494,6 +499,8 @@ let _ =
               tmp
             )
           in
+          (* Trace.parse_trace *)
+          (* Ltlxms.formula_to_z3 *)
           let cmd =
             Printf.sprintf
               "dune exec src/ltlxms/test/test_until_trace.exe %s %s"

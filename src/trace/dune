@@ -1,4 +1,5 @@
 (library
  (name trace)
- (modules TraceStructure)
+ (public_name rmtld3synth.trace)
+ (modules trace)
  (libraries yojson))

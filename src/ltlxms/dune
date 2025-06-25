@@ -1,11 +1,7 @@
 (library
  (name ltlxms)
+ (public_name rmtld3synth.ltlxms)
  (libraries z3 yojson)
- (preprocess (pps ppx_deriving_yojson))
- (modules ltlxms))
-
-(library
- (name formulas)
- (libraries z3 yojson ltlxms)
- (preprocess (pps ppx_deriving_yojson))
- (modules formulas))
+ (preprocess
+  (pps ppx_deriving_yojson))
+ (modules syntax encoding))

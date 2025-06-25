@@ -136,52 +136,54 @@ module Temporal = struct
     Z3.Boolean.mk_false ctx
 end
 
+open Syntax
+
 (* Convert a term into a Z3 expression *)
 let rec term_to_z3 ctx (decls: temporal_operator_decls) term =
   match term with
-  | Ltlxms.Proposition p -> Z3.Boolean.mk_const ctx (Z3.Symbol.mk_string ctx p)
-  | Ltlxms.Intersection (t1, t2) -> Logic.single_and ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
-  | Ltlxms.Union (t1, t2) -> Logic.single_or ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
-  | Ltlxms.Expand (t, value) -> 
+  | Proposition p -> Z3.Boolean.mk_const ctx (Z3.Symbol.mk_string ctx p)
+  | Intersection (t1, t2) -> Logic.single_and ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Union (t1, t2) -> Logic.single_or ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Expand (t, value) -> 
       let expand_symbol = Z3.Symbol.mk_string ctx "expand" in
       let expand_func = Z3.FuncDecl.mk_func_decl ctx expand_symbol [Z3.Boolean.mk_sort ctx; Z3.Arithmetic.Real.mk_sort ctx] (Z3.Boolean.mk_sort ctx) in
       Z3.Expr.mk_app ctx expand_func [term_to_z3 ctx decls t; Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float value)]
-  | Ltlxms.NextT t -> Temporal.nextt ctx decls (term_to_z3 ctx decls t)
-  | Ltlxms.UntilT (t1, t2, unravel_depth) -> 
+  | NextT t -> Temporal.nextt ctx decls (term_to_z3 ctx decls t)
+  | UntilT (t1, t2, unravel_depth) -> 
       let e1 = term_to_z3 ctx decls t1 in
       let e2 = term_to_z3 ctx decls t2 in
       Temporal.until ctx decls e1 e2 unravel_depth
-  | Ltlxms.Negation t -> Logic.single_not ctx (term_to_z3 ctx decls t)
+  | Negation t -> Logic.single_not ctx (term_to_z3 ctx decls t)
 
 (* Convert a formula into a Z3 expression *)
 let rec formula_to_z3 ctx (decls: temporal_operator_decls) formula =
   match formula with
-  | Ltlxms.SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
-  | Ltlxms.Collides (t1, t2, k) ->
-    let disc = Ltlxms.Disconnected (t1, t2) in
-    let over = Ltlxms.Overlap (t1, t2) in
-    formula_to_z3 ctx decls (Ltlxms.Until (disc, over, k))
-  | Ltlxms.Equal (t1, t2) ->
+  | SubSetEq (t1, t2) -> Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Collides (t1, t2, k) ->
+    let disc = Disconnected (t1, t2) in
+    let over = Overlap (t1, t2) in
+    formula_to_z3 ctx decls (Until (disc, over, k))
+  | Equal (t1, t2) ->
       let sub1 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2) in
       let sub2 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t2) (term_to_z3 ctx decls t1) in
       Logic.single_and ctx sub1 sub2
-  | Ltlxms.Disconnected (t1, t2) ->
-      let not_t2 = Ltlxms.Negation t2 in
-      let not_t1 = Ltlxms.Negation t1 in
+  | Disconnected (t1, t2) ->
+      let not_t2 = Negation t2 in
+      let not_t1 = Negation t1 in
       let sub1 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls not_t2) in
       let sub2 = Logic.sub_set_eq ctx (term_to_z3 ctx decls t2) (term_to_z3 ctx decls not_t1) in
       Logic.single_and ctx sub1 sub2
-  | Ltlxms.And (f1, f2) -> Logic.single_and ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
-  | Ltlxms.Or (f1, f2) -> Logic.single_or ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
-  | Ltlxms.Not f -> Logic.single_not ctx (formula_to_z3 ctx decls f)
-  | Ltlxms.Next f -> Temporal.next ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Always f -> Temporal.always ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Eventually f -> Temporal.eventually ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Once f -> Temporal.once ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
-  | Ltlxms.Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
-  | Ltlxms.Previous f -> Temporal.previous ctx decls (formula_to_z3 ctx decls f)
-  | Ltlxms.Until (f1, f2, unravel_depth) -> 
+  | And (f1, f2) -> Logic.single_and ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Or (f1, f2) -> Logic.single_or ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Not f -> Logic.single_not ctx (formula_to_z3 ctx decls f)
+  | Next f -> Temporal.next ctx decls (formula_to_z3 ctx decls f)
+  | Always f -> Temporal.always ctx decls (formula_to_z3 ctx decls f)
+  | Eventually f -> Temporal.eventually ctx decls (formula_to_z3 ctx decls f)
+  | Once f -> Temporal.once ctx decls (formula_to_z3 ctx decls f)
+  | Overlap (t1, t2) -> Logic.overlap ctx (term_to_z3 ctx decls t1) (term_to_z3 ctx decls t2)
+  | Implies (f1, f2) -> Logic.single_implies ctx (formula_to_z3 ctx decls f1) (formula_to_z3 ctx decls f2)
+  | Previous f -> Temporal.previous ctx decls (formula_to_z3 ctx decls f)
+  | Until (f1, f2, unravel_depth) -> 
       let e1 = formula_to_z3 ctx decls f1 in
       let e2 = formula_to_z3 ctx decls f2 in
       Temporal.until ctx decls e1 e2 unravel_depth
