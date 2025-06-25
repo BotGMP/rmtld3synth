@@ -361,7 +361,7 @@ let _ =
     ;
     ( "--input-ltlxms"
       , Arg.String set_ltlxms 
-      , " Inputs ltlxms expression (RMTLD3 formula)" )
+      , " Inputs ltlxms expression (Experimental)" )
     ; ( "--input-dsl"
       , Arg.String set_exp_dsl
       , " Inputs dsl expression (RMTLD3 formula)" )
