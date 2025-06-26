@@ -2,4 +2,4 @@
  (name sequence)
  (public_name rmtld3synth.sequence)
  (libraries yojson)
- (modules snapshot timed))
+ (modules snapshot))
