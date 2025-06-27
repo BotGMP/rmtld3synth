@@ -1,5 +1,5 @@
 (library
  (name sequence)
  (public_name rmtld3synth.sequence)
- (libraries yojson)
+ (libraries z3 yojson)
  (modules snapshot))

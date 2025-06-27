@@ -502,22 +502,21 @@ let _ =
       (* --- Parse trace and property files to check validity --- *)
       (try
         let trace_json = Yojson.Safe.from_file trace_path in
-        let _parsed_trace = parse_trace trace_json in
+        let _parsed_trace = parse_trace (Yojson.Safe.to_basic trace_json) in
         let property_json = Yojson.Safe.from_file property_file in
-        let _ = Ltlxms.formula_of_yojson property_json in
+        let _ = Syntax.formula_of_yojson property_json in
         ()
       with e ->
         Printf.eprintf "Error parsing trace or property file: %s\n" (Printexc.to_string e);
         exit 1
       );
-      (* --- Continue with system call --- *)
-      let cmd =
-        Printf.sprintf
-          "dune exec src/ltlxms/test/test_until_trace.exe %s %s"
-          trace_path property_file
-      in
-      let status = Sys.command cmd in
-      if status <> 0 then Printf.eprintf "Error: test_until_trace failed\n"
+    (*Call the trace check*)
+    try
+      Trace_check.run_ltlxms_trace_check
+        ~trace_file:trace_path
+        ~property_file:property_file
+    with e ->
+      Printf.eprintf "Error running trace check: %s\n" (Printexc.to_string e)
     )
   )
   else if !ocaml_lang then (
@@ -569,4 +568,5 @@ let _ =
     let t = if json_t <> `Null then Rmtld3.time_of_yojson json_t else 0. in
     let res = Rmtld3.eval (env, lg_env, t) input_fm in
     res |> b3_to_string |> print_endline
-  else print_endline "Nothing to do. Type --help"
+  else print_endline "Nothing to do. Type --help" ;
+  Array.iteri (fun i s -> Printf.printf "argv[%d]: %s\n" i s) Sys.argv; flush stdout

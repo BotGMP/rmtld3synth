@@ -11,4 +11,24 @@
 (executable
  (name test_until_trace)
  (modules test_until_trace)
- (libraries ltlxms trace z3 yojson))
+ (libraries ltlxms sequence z3 yojson))
+
+(rule
+ (alias runtest)
+ (deps
+   test_until_trace.exe
+   ../../sequence/tests/Scenario5_Test1.json
+   property.json)
+ (action
+   (run ./test_until_trace.exe ../../sequence/tests/Scenario5_Test1.json property.json))
+)
+
+(rule
+ (alias runtest)
+ (deps
+   test_until_trace.exe
+   ../../sequence/tests/Scenario6_Test1.json
+   property2.json)
+ (action
+   (run ./test_until_trace.exe ../../sequence/tests/Scenario6_Test1.json property2.json))
+)
