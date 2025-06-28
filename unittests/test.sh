@@ -161,6 +161,15 @@ declare -a arrayrmtld_sat_expected_result=(
 
 [ "$1" = "quickcheck" ] || [ "$1" = "allchecks" ] && {
 
+  echo "Executing rmtld3synth-unittest..."
+
+  # copy binary from _build directory to test directory
+  cp "./../_build/default/unittests/rmtld3/unittest.exe" .
+
+  ./unittest.exe
+
+  sleep 10
+
   echo "Executing generated cpp test..."
 
   make -C $TEST_DIR/../_unittests_ml/tests
