@@ -568,5 +568,4 @@ let _ =
     let t = if json_t <> `Null then Rmtld3.time_of_yojson json_t else 0. in
     let res = Rmtld3.eval (env, lg_env, t) input_fm in
     res |> b3_to_string |> print_endline
-  else print_endline "Nothing to do. Type --help" ;
-  Array.iteri (fun i s -> Printf.printf "argv[%d]: %s\n" i s) Sys.argv; flush stdout
+  else print_endline "Nothing to do. Type --help"
