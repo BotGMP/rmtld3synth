@@ -1,12 +1,49 @@
 (test
- (name test_ltlxms)
- (libraries yojson ltlxms)
- (modules test_ltlxms))
-
-(test
  (name test_formulas)
  (libraries z3 yojson ltlxms)
- (modules test_formulas))
+ (modules test_formulas)
+ (deps
+  test1.json
+  test2.json
+  test3.json
+  test4.json
+  test5.json
+  test6.json
+  test7.json
+  test8.json
+  test9.json
+  test10.json
+  test11.json
+  test12.json
+  test13.json
+  test14.json
+  test15.json
+  test16.json
+  test17.json
+  test18.json
+  test19.json
+  test20.json
+  test21.json
+  test1.out
+  test2.out
+  test3.out
+  test4.out
+  test5.out
+  test6.out
+  test7.out
+  test8.out
+  test9.out
+  test10.out
+  test11.out
+  test12.out
+  test13.out
+  test14.out
+  test15.out
+  test16.out
+  test18.out
+  test19.out
+  test20.out
+  test21.out))
 
 (executable
  (name test_until_trace)
@@ -15,20 +52,18 @@
 
 (rule
  (alias runtest)
- (deps
-   test_until_trace.exe
-   ../../sequence/tests/Scenario5_Test1.json
-   property.json)
+ (deps ../../sequence/tests/Scenario5_Test1.json property.json)
  (action
-   (run ./test_until_trace.exe ../../sequence/tests/Scenario5_Test1.json property.json))
-)
+  (run
+   ./test_until_trace.exe
+   ../../sequence/tests/Scenario5_Test1.json
+   property.json)))
 
 (rule
  (alias runtest)
- (deps
-   test_until_trace.exe
-   ../../sequence/tests/Scenario6_Test1.json
-   property2.json)
+ (deps ../../sequence/tests/Scenario6_Test1.json property2.json)
  (action
-   (run ./test_until_trace.exe ../../sequence/tests/Scenario6_Test1.json property2.json))
-)
+  (run
+   ./test_until_trace.exe
+   ../../sequence/tests/Scenario6_Test1.json
+   property2.json)))

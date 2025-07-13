@@ -97,13 +97,12 @@ let () =
     ; always_decl= shared_always_decl
     ; eventually_decl= shared_eventually_decl }
   in
-  Sys.chdir "./../../../../../src/ltlxms/tests" ;
   let files = Sys.readdir "." in
   Array.iter
     (fun file ->
       if Filename.check_suffix file ".json" then
         let input_file = file in
-        let output_file = Filename.chop_suffix file ".json" ^ "out.txt" in
+        let output_file = Filename.chop_suffix file ".json" ^ ".out" in
         if Sys.file_exists output_file then (
           debug
             (Printf.sprintf

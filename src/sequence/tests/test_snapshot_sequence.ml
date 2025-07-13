@@ -27,16 +27,7 @@ let string_of_trace tr =
 
 (* Main function to read the JSON file, parse it, and print the trace *)
 let () =
-  Printf.printf "Current working directory: %s\n" (Sys.getcwd ()) ;
-  let json_file =
-    "./../../../../../src/sequence/tests/Scenario1_Test1.json"
-  in
-  (* Convert json_file to Windows path *)
-  let json_file =
-    if Sys.os_type = "Win32" then
-      String.map (fun c -> if c = '/' then '\\' else c) json_file
-    else json_file
-  in
+  let json_file = "Scenario1_Test1.json" in
   let json = Yojson.Basic.from_file json_file in
   let parsed_trace = parse_trace json in
   Printf.printf "Parsed trace successfully!\n" ;

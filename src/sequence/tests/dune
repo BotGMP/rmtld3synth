@@ -1,7 +1,8 @@
 (test
  (name test_snapshot_sequence)
  (libraries sequence yojson z3)
- (modules test_snapshot_sequence))
+ (modules test_snapshot_sequence)
+ (deps Scenario1_Test1.json))
 
 (test
  (name expressions_and_AABB)
