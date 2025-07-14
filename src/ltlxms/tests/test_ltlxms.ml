@@ -59,9 +59,9 @@ let test_operation ctx decls input_file output_file =
   let expected_output = String.trim expected_output in
   (* Compare actual output with expected output *)
   if actual_output = expected_output then
-    Printf.printf "Test passed for %s!\n\n\n" input_file
+    Printf.printf "\027[32m✓ Test passed for %s!\027[0m\n\n" input_file
   else (
-    Printf.printf "Test failed for %s!\n" input_file ;
+    Printf.printf "\027[31mTest failed for %s!\027[0m\n" input_file ;
     Printf.printf "Expected: %s\n" expected_output ;
     Printf.printf "Actual: %s\n" actual_output )
 
@@ -97,7 +97,29 @@ let () =
     ; always_decl= shared_always_decl
     ; eventually_decl= shared_eventually_decl }
   in
-  let files = Sys.readdir "." in
+  let files =
+    [| "test1.json"
+    ; "test2.json"
+    ; "test3.json"
+    ; "test4.json"
+    ; "test5.json"
+    ; "test6.json"
+    ; "test7.json"
+    ; "test8.json"
+    ; "test9.json"
+    ; "test10.json"
+    ; "test11.json"
+    ; "test12.json"
+    ; "test13.json"
+    ; "test14.json"
+    ; "test15.json"
+    ; "test16.json"
+    ; "test17.json"
+    ; "test18.json"
+    ; "test19.json"
+    ; "test20.json"
+    ; "test21.json" |]
+  in
   Array.iter
     (fun file ->
       if Filename.check_suffix file ".json" then
@@ -106,7 +128,7 @@ let () =
         if Sys.file_exists output_file then (
           debug
             (Printf.sprintf
-               "Running test with input file: %s and output file: %s\n"
+               "# Running test with input file: %s and output file: %s"
                input_file output_file ) ;
           (* Pass ctx and decls to test_operation *)
           test_operation ctx decls input_file output_file )
