@@ -8,8 +8,6 @@ open Interface
 open Interface.Rmdslparser
 open Dsl
 
-open Ltlxms
-open Sequence.Snapshot
 
 let helper = mk_helper
 
@@ -502,9 +500,9 @@ let _ =
       (* --- Parse trace and property files to check validity --- *)
       (try
         let trace_json = Yojson.Safe.from_file trace_path in
-        let _parsed_trace = parse_trace (Yojson.Safe.to_basic trace_json) in
+        let _parsed_trace = Sequence.Snapshot.parse (Yojson.Safe.to_basic trace_json) in
         let property_json = Yojson.Safe.from_file property_file in
-        let _ = Syntax.formula_of_yojson property_json in
+        let _ = Ltlxms.Syntax.formula_of_yojson property_json in
         ()
       with e ->
         Printf.eprintf "Error parsing trace or property file: %s\n" (Printexc.to_string e);
@@ -512,9 +510,10 @@ let _ =
       );
     (*Call the trace check*)
     try
-      Trace_check.run_ltlxms_trace_check
+      Ltlxms.Check.run
         ~trace_file:trace_path
         ~property_file:property_file
+        ~debug:get_setting_int "debug" helper
     with e ->
       Printf.eprintf "Error running trace check: %s\n" (Printexc.to_string e)
     )

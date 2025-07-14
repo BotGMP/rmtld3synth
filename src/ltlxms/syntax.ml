@@ -11,19 +11,19 @@ type term =
   | Negation of term
   | NextT of term
   | Expand of term * float
-  | UntilT of term * term * int
+  | UntilT of term * term
 [@@deriving yojson]
 
 type formula =
   | SubSetEq of term * term
-  | Collides of term * term * int
+  | Collides of term * term
   | Equal of term * term
   | Disconnected of term * term
   | And of formula * formula
   | Or of formula * formula
   | Not of formula
   | Next of formula
-  | Until of formula * formula * int
+  | Until of formula * formula
   | Always of formula
   | Eventually of formula
   | Previous of formula

@@ -123,7 +123,7 @@ let () =
       let json_path = json_file in
       Printf.printf "Processing file: %s\n" json_path ;
       let json = Yojson.Basic.from_file json_path in
-      let parsed_trace = parse_trace json in
+      let parsed_trace = parse json in
       let event_expressions = create_event_expressions ctx parsed_trace in
       List.iter
         (fun (event_id, combined_expr, z3_vars, obbs) ->

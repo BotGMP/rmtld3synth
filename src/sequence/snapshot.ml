@@ -55,7 +55,7 @@ let parse_event json =
   }
 
 (* Function to parse the trace *)
-let parse_trace json =
+let parse json =
   {trace= json |> member "trace" |> to_list |> List.map parse_event}
 
 (*Get the coordinates from the trace*)

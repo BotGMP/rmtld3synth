@@ -1,3 +1,0 @@
-(property
-    (always (or (overlap (expand (prop "a") 1.) (prop "b")) (eventually (subseteq (prop "a") (prop "b")))))
-)

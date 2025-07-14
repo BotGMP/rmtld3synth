@@ -29,6 +29,6 @@ let string_of_trace tr =
 let () =
   let json_file = "scenario1.json" in
   let json = Yojson.Basic.from_file json_file in
-  let parsed_trace = parse_trace json in
+  let parsed_trace = parse json in
   Printf.printf "Parsed trace successfully!\n" ;
   Printf.printf "%s\n" (string_of_trace parsed_trace)

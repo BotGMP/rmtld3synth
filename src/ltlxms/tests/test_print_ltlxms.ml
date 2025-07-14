@@ -1,3 +1,5 @@
+(* It provides a command-line interface to print json files corresponding to
+   formulas defined in LTLxMS format. *)
 open Ltlxms.Syntax
 
 let () =
@@ -12,8 +14,7 @@ let () =
   let property_1 =
     Until
       ( Disconnected (Proposition "C1", Proposition "C2")
-      , Overlap (Proposition "C1", Proposition "C2")
-      , 2 )
+      , Overlap (Proposition "C1", Proposition "C2") )
   in
   (* property 3 *)
   (* (always (or (overlap (expand (prop "a") 1.) (prop "b")) (eventually

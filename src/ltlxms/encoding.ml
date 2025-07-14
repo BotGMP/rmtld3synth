@@ -175,7 +175,7 @@ module Formulas = struct
   open Syntax
 
   (* Convert a term into a Z3 expression *)
-  let rec term_to_z3 ctx (decls : temporal_operator_decls) term =
+  let rec term_to_z3 ?(unwinding_depth=10) ctx (decls : temporal_operator_decls) term =
     match term with
     | Proposition p -> Z3.Boolean.mk_const ctx (Z3.Symbol.mk_string ctx p)
     | Intersection (t1, t2) ->
@@ -195,22 +195,22 @@ module Formulas = struct
           [ term_to_z3 ctx decls t
           ; Z3.Arithmetic.Real.mk_numeral_s ctx (string_of_float value) ]
     | NextT t -> Temporal.nextt ctx decls (term_to_z3 ctx decls t)
-    | UntilT (t1, t2, unravel_depth) ->
+    | UntilT (t1, t2) ->
         let e1 = term_to_z3 ctx decls t1 in
         let e2 = term_to_z3 ctx decls t2 in
-        Temporal.until ctx decls e1 e2 unravel_depth
+        Temporal.until ctx decls e1 e2 unwinding_depth
     | Negation t -> Logic.single_not ctx (term_to_z3 ctx decls t)
 
   (* Convert a formula into a Z3 expression *)
-  let rec formula_to_z3 ctx (decls : temporal_operator_decls) formula =
+  let rec formula_to_z3 ?(unwinding_depth=10) ctx (decls : temporal_operator_decls) formula =
     match formula with
     | SubSetEq (t1, t2) ->
         Logic.sub_set_eq ctx (term_to_z3 ctx decls t1)
           (term_to_z3 ctx decls t2)
-    | Collides (t1, t2, k) ->
+    | Collides (t1, t2) ->
         let disc = Disconnected (t1, t2) in
         let over = Overlap (t1, t2) in
-        formula_to_z3 ctx decls (Until (disc, over, k))
+        formula_to_z3 ctx decls (Until (disc, over))
     | Equal (t1, t2) ->
         let sub1 =
           Logic.sub_set_eq ctx (term_to_z3 ctx decls t1)
@@ -254,9 +254,9 @@ module Formulas = struct
           (formula_to_z3 ctx decls f1)
           (formula_to_z3 ctx decls f2)
     | Previous f -> Temporal.previous ctx decls (formula_to_z3 ctx decls f)
-    | Until (f1, f2, unravel_depth) ->
+    | Until (f1, f2) ->
         let e1 = formula_to_z3 ctx decls f1 in
         let e2 = formula_to_z3 ctx decls f2 in
-        Temporal.until ctx decls e1 e2 unravel_depth
+        Temporal.until ctx decls e1 e2 unwinding_depth
     | _ -> failwith "Unsupported formula type for conversion to Z3"
 end

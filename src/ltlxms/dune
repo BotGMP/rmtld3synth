@@ -4,4 +4,4 @@
  (libraries z3 yojson sequence)
  (preprocess
   (pps ppx_yojson_conv))
- (modules syntax encoding trace_check))
+ (modules syntax encoding check))
