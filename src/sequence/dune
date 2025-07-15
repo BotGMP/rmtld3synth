@@ -2,4 +2,6 @@
  (name sequence)
  (public_name rmtld3synth.sequence)
  (libraries z3 yojson)
- (modules snapshot))
+ (modules snapshot)
+ (enabled_if
+  (= %{profile} "release")))

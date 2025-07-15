@@ -513,7 +513,7 @@ let _ =
       Ltlxms.Check.run
         ~trace_file:trace_path
         ~property_file:property_file
-        ~debug:get_setting_int "debug" helper
+        ~debug:!verb_mode
     with e ->
       Printf.eprintf "Error running trace check: %s\n" (Printexc.to_string e)
     )
